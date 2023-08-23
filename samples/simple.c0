@@ -1,0 +1,6 @@
+int main() {
+    string foo = "\nHELLO\abc";
+    int a = 12;
+    a += 17;
+    return a;
+}

@@ -1,0 +1,23 @@
+#use <args>
+#use <conio>
+
+#use "file_io.c0"
+
+void compile_file(string path) {
+    string res = f_read_file(path);
+    println(res);
+}
+
+int main() {
+    args_t args = args_parse();
+    if (args->argc == 0) {
+        println("Usage: ccc0 [OPTION...] SOURCEFILE");
+        println("where OPTION is");
+        println("<TODO>");
+    } else {
+        string source = args->argv[0];
+        compile_file(source);
+    }
+
+    return 0;
+}

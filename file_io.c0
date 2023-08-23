@@ -1,0 +1,17 @@
+#use <file>
+#use <string>
+
+string f_read_file(string path) {
+    file_t handle = file_read(path);
+    string result = "";
+
+    if (!file_eof(handle)) {
+        result = file_readline(handle);
+        while (!file_eof(handle)) {
+            result = format("%s\n%s", result, file_readline(handle));
+        }
+    }
+
+    file_close(handle);
+    return result;
+}

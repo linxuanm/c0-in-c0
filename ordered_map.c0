@@ -1,0 +1,341 @@
+#use <conio>
+#use <string>
+#use <util>
+
+/*
+    This file contains a ordered map implemented with red-black tree.
+*/
+
+/*
+    Introducing the worst implementation of polymorphism in the history of
+    computer science create by me at 3 a.m. after a week of sleep deprivation.
+
+    So basically just create a injective function from any type to `om_key_t`
+    and use the functions in this file to make a map with your type as keys. The
+    output type is always an integer though, as it is easy to create a mapping
+    to your own type at a covariant position, but not at a contravariant
+    position.
+
+    Note: an `om_key_t *` passed into `om_insert_kv_pair` is not copied.
+    Therefore an `om_key_t` should never be mutated after its creation.
+*/
+struct om_key_t {
+    int key_size;
+    int[] key;
+};
+typedef struct om_key_t om_key_t;
+
+struct om_node_t {
+    om_key_t *key;
+    int value;
+
+    struct om_node_t *left;
+    struct om_node_t *right;
+    struct om_node_t *parent;
+
+    bool is_red; // false = black; true = red
+};
+typedef struct om_node_t om_node_t;
+
+struct om_map_t {
+    int size;
+    om_node_t *root;
+
+    bool allow_repeat;
+};
+typedef struct om_map_t om_map_t;
+
+void om_print_kv_pair(om_node_t *kv);
+
+om_map_t *om_create_map() {
+    om_map_t *map = alloc(om_map_t);
+    map->size = 0;
+    map->root = NULL;
+    map->allow_repeat = false;
+    return map;
+}
+
+om_map_t *om_create_bst() {
+    om_map_t *map = alloc(om_map_t);
+    map->root = NULL;
+    map->allow_repeat = true;
+    return map;
+}
+
+om_key_t *om_serialize_int(int value) {
+    om_key_t *key = alloc(om_key_t);
+    key->key_size = 1;
+    key->key = alloc_array(int, 1);
+    key->key[0] = value;
+
+    return key;
+}
+
+om_key_t *om_serialize_string(string value) {
+    om_key_t *key = alloc(om_key_t);
+    key->key_size = string_length(value);
+    key->key = alloc_array(int, key->key_size);
+    for (int i = 0; i < key->key_size; i++) {
+        key->key[i] = char_ord(string_charat(value, i));
+    }
+
+    return key;
+}
+
+int om_compare_key(om_key_t *a, om_key_t *b)
+//@ensures -1 <= \result && \result <= 1;
+{
+    for (int i = 0; i < min(a->key_size, b->key_size); i++) {
+        if (a->key[i] < b->key[i]) return -1;
+        else if (a->key[i] > b->key[i]) return 1;
+    }
+
+    if (a->key_size == b->key_size) return 0;
+    else if (a->key_size < b->key_size) return -1;
+    else return 1;
+}
+
+void left_rotate(om_node_t *node, om_map_t *map)
+//@requires node->right != NULL;
+{
+    om_node_t *right = node->right;
+    node->right = right->left;
+    if (node->right != NULL) node->right->parent = node;
+
+    right->parent = node->parent;
+
+    if (node->parent == NULL) map->root = right;
+    else if (node->parent->left == node) node->parent->left = right;
+    else node->parent->right = right;
+
+    node->parent = right;
+    right->left = node;
+}
+
+void right_rotate(om_node_t *node, om_map_t *map)
+//@requires node->left != NULL;
+{
+    om_node_t *left = node->left;
+    node->left = left->right;
+    if (node->left != NULL) node->left->parent = node;
+
+    left->parent = node->parent;
+
+    if (node->parent == NULL) map->root = left;
+    else if (node->parent->left == node) node->parent->left = left;
+    else node->parent->right = left;
+
+    node->parent = left;
+    left->right = node;
+}
+
+om_node_t *om_find_node(om_node_t *node, om_key_t *key) {
+    while (node != NULL) {
+        int cmp = om_compare_key(key, node->key);
+        if (cmp == 0) return node;
+        else if (cmp < 0) node = node->left;
+        else node = node->right;
+    }
+
+    return NULL;
+}
+
+bool om_has_key(om_map_t *tree, om_key_t *key) {
+    return om_find_node(tree->root, key) != NULL;
+}
+
+// https://www.geeksforgeeks.org/insertion-in-red-black-tree/
+void om_recolor_or_rotate(om_map_t *map, om_node_t *node) {
+    while (node->parent != NULL && node->parent->is_red) {
+        om_node_t *parent = node->parent;
+        om_node_t *grand = parent->parent;
+        //@assert grand != NULL; // since a red node cannot be root node
+        //@assert parent == grand->left || parent == grand->right;
+
+        om_node_t *uncle;
+        if (parent == grand->left) uncle = grand->right;
+        else uncle = grand->left;
+
+        if (uncle != NULL && uncle->is_red) {
+            /*
+                - change parent and uncle to black
+                - repeat `om_recolor_or_rotate` on grandfather
+            */
+            parent->is_red = false;
+            uncle->is_red = false;
+            grand->is_red = true;
+            node = grand;
+        } else {
+            /*
+                four possible cases:
+                - LL rotation
+                - LR rotation
+                - RR rotation
+                - RL rotation
+            */
+
+            if (node == parent->left && parent == grand->left) {
+                // LL case
+                right_rotate(grand, map);
+                bool parent_red = parent->is_red;
+                parent->is_red = grand->is_red;
+                grand->is_red = parent_red;
+
+            } else if (node == parent->right && parent == grand->left) {
+                // LR case
+                left_rotate(parent, map);
+                right_rotate(grand, map);
+                bool grand_red = grand->is_red;
+                grand->is_red = node->is_red;
+                node->is_red = grand_red;
+
+            } else if (node == parent->right && parent == grand->right) {
+                // RR case
+                left_rotate(grand, map);
+                bool grand_red = grand->is_red;
+                grand->is_red = parent->is_red;
+                parent->is_red = grand_red;
+
+            } else if (node == parent->left && parent == grand->right) {
+                // RL case
+                right_rotate(parent, map);
+                left_rotate(grand, map);
+                bool grand_red = grand->is_red;
+                grand->is_red = node->is_red;
+                node->is_red = grand_red;
+            } else {
+                // SHOULD BE UNREACHABLE.
+                //@assert 0 == 1;
+            }
+        }
+    }
+
+    map->root->is_red = false;
+}
+
+void om_insert_kv_pair(om_map_t *tree, om_key_t *key, int value) {
+    om_node_t *new_node = alloc(om_node_t);
+    new_node->is_red = true;
+    new_node->key = key;
+    new_node->value = value;
+    
+    if (tree->root == NULL) {
+        new_node->is_red = false;
+        tree->root = new_node;
+        tree->size++;
+    } else {
+        om_node_t *parent = NULL;
+        om_node_t *curr = tree->root;
+        bool last_branch_is_left = false;
+        while (curr != NULL) {
+            parent = curr;
+            int cmp = om_compare_key(key, curr->key);
+            if (cmp == 0 && !tree->allow_repeat) {
+                curr->value = value;
+                return;
+            } else if (cmp < 0) {
+                curr = curr->left;
+                last_branch_is_left = true;
+            } else {
+                curr = curr->right;
+                last_branch_is_left = false;
+            }
+        }
+
+        if (last_branch_is_left) parent->left = new_node;
+        else parent->right = new_node;
+        new_node->parent = parent;
+        tree->size++;
+
+        om_recolor_or_rotate(tree, new_node);
+    }
+}
+
+void om_insert_s(om_map_t *map, string key, int value) {
+    om_insert_kv_pair(map, om_serialize_string(key), value);
+}
+
+void om_insert_i(om_map_t *map, int key, int value) {
+    om_insert_kv_pair(map, om_serialize_int(key), value);
+}
+
+int om_get_s(om_map_t *map, string key) {
+    return om_find_node(map->root, om_serialize_string(key))->value;
+}
+
+int om_get_i(om_map_t *map, int key) {
+    return om_find_node(map->root, om_serialize_int(key))->value;
+}
+
+/*
+    Removes a key from the map and return true if the key exists and is deleted,
+    false otherwise.
+*/
+/*bool om_delete_key(om_map_t *map, om_key_t *key) {
+    om_node_t *node = om_find_node(map->root, key);
+    if (node == NULL) return false;
+
+    // https://www.geeksforgeeks.org/deletion-in-red-black-tree/
+    om_node_t *u;
+    if (node->left == NULL && node->right == NULL) {
+        u = NULL;
+    } else if (node->left == NULL || node->right == NULL) {
+        u = node->left != NULL ? node->left : node->right;
+    } else {
+
+    }
+
+    return true;
+}*/
+
+void om_print_kv_pair(om_node_t *kv) {
+    print("(");
+    printchar(kv->is_red ? 'r' : 'b');
+    print(") [");
+    for (int i = 0; i < kv->key->key_size; i++) {
+        printint(kv->key->key[i]);
+        if (i != kv->key->key_size - 1) printchar(' ');
+    }
+    print("] ");
+    printint(kv->value);
+    println("");
+}
+
+void om_print_map_preorder(om_node_t *node) {
+    if (node == NULL) return;
+
+    om_print_kv_pair(node);
+    om_print_map_preorder(node->left);
+    om_print_map_preorder(node->right);
+}
+
+void om_print_map_inorder(om_node_t *node) {
+    if (node == NULL) return;
+
+    om_print_map_preorder(node->left);
+    om_print_kv_pair(node);
+    om_print_map_preorder(node->right);
+}
+
+void om_print_map_postorder(om_node_t *node) {
+    if (node == NULL) return;
+
+    om_print_map_preorder(node->left);
+    om_print_map_preorder(node->right);
+    om_print_kv_pair(node);
+}
+
+void om_print_map(om_map_t *map) {
+    print("Map Size: ");
+    printint(map->size);
+    println("");
+
+    println("Pre Order:");
+    om_print_map_preorder(map->root);
+
+    println("In Order:");
+    om_print_map_inorder(map->root);
+
+    println("Post Order:");
+    om_print_map_postorder(map->root);
+}
