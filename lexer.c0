@@ -3,10 +3,14 @@
 
 struct l_token_t {
     /*
+        - A: assignment operator
+        - I: identifier
         - K: keyword
         - L: literal
+        - S: separator
     */
     char type;
+    string str;
 };
 typedef struct l_token_t l_token_t;
 
@@ -20,6 +24,7 @@ string l_regex_or(string a, string b) {
 */
 int l_tokenize(string code, l_token_t *[] tokens) {
     int size = 0;
+    int src_ptr = 0;
 
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
@@ -30,6 +35,7 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     string R_CCHAR = l_regex_or(R_SCHAR, "\"|\\0");
     string R_STRLIT = format("\"%s*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
+    string R_LIT = R_NUM(R_NUM, R_NUM(R_CHRLIT, R_STRLIT));
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -37,6 +43,38 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     re_dfa_t *R_ASN_OP = re_parse_regex(
         "=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
     );
+    re_dfa_t *R_WHITE = re_parse_regex("\\w*");
+    re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
+
+    // yes ik ugly
+    int n_token_types = 5;
+    re_dfa_t *[] regexs = alloc_array(re_dfa_t *, n_token_types);
+    regexs[0] = R_IDENTIFIER;
+    regexs[1] = R_SEP;
+    regexs[2] = R_ASN_OP;
+    regexs[3] = R_WHITE;
+    regexs[4] = R_LITERAL;
+
+    char[] token_types = alloc_array(char, n_token_types);
+    token_types[0] = 'I';
+    token_types[1] = 'S';
+    token_types[2] = 'A';
+    token_types[3] = 'W';
+    token_types[4] = 'L';
+
+    while (src_ptr != string_length(code)) {
+        int token_size;
+        char token_type;
+        string matched;
+
+        token_size = re_run_dfa(R_IDENTIFIER, code, src_ptr);
+        if (token_size != 0) {
+            token_type = 'I';
+            matched = string_sub(code, src_ptr, src_ptr + token_size);
+        } else {
+
+        }
+    }
 
     return size;
 }
