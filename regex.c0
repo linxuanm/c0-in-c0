@@ -143,11 +143,10 @@ bool re_consume(char expect, re_ctx_t *ctx)
     bool match = peek == expect;
     if (match) ctx->pc++;
     else {
-        print("Regex Syntax Error: unexpected character '");
-        printchar(peek);
-        print("', expecting '");
-        printchar(expect);
-        println("'");
+        printf(
+            "Regex Syntax Error: unexpected character '%c', expecting '%c'",
+            peek, expect
+        );
     }
 
     return match;
@@ -174,9 +173,11 @@ bool re_consume_class_char(re_ctx_t *ctx, char *out) {
         peek = re_peek_ctx(ctx);
         ctx->pc++;
         if (peek != ']' && peek != '-' && peek != '^' && peek != '\\') {
-            print("Regex Syntax Error: unexpected escaped char '");
-            printchar(peek);
-            println("' in character class, expecting ']', '-' or '^'");
+            printf(
+                "Regex Syntax Error: unexpected escaped char '%c' in character"
+                " class, expecting ']', '-' or '^'\n",
+                peek
+            );
             return false;
         }
     }
@@ -247,11 +248,10 @@ bool re_parse_class(re_ctx_t *ctx, int from, int to) {
             int from_char = char_ord(*peek_ptr);
             int to_char = char_ord(*to_ptr);
             if (to_char < from_char) {
-                print("Regex Syntax Error: bad character range [");
-                printchar(*peek_ptr);
-                printchar('-');
-                printchar(*to_ptr);
-                println("]");
+                printf(
+                    "Regex Syntax Error: bad character range [%c-%c]\n",
+                    *peek_ptr, *to_ptr
+                );
             }
 
             for (int i = from_char; i <= to_char; i++) {
@@ -306,9 +306,7 @@ bool re_parse_atom(re_ctx_t *ctx, int from, int to)
                 peek != 'w' && peek != 'W' && peek != 's' &&
                 peek != 'S'
             ) {
-                print("Regex Syntax Error: invalid escaped char '\\");
-                printchar(peek);
-                println("'");
+                printf("Regex Syntax Error: invalid escaped char '\\%c'", peek);
                 return false;
             }
 
@@ -458,9 +456,7 @@ re_dfa_t *re_parse_regex(string regex) {
     }
 
     if (!re_eof_ctx(ctx)) {
-        print("Regex Syntax Error: parse ended at char ");
-        printint(ctx->pc);
-        printchar('\n');
+        printf("Regex Syntax Error: parse ended at char %d\n", ctx->pc);
         println("REGEX PARSE FAILED");
         return NULL;
     }
@@ -487,8 +483,7 @@ void re_print_char(int ord) {
 
 void re_print_state(int id, re_dfa_t *dfa) {
     re_state_t *state = dfa->states[id];
-    print("State ");
-    printint(id);
+    printf("State %d", id);
     if (state->is_term_state) print(" (FINISH)");
     println(":");
 
@@ -514,9 +509,7 @@ void re_print_state(int id, re_dfa_t *dfa) {
 
         for (int i = 0; i < dfa->n_states; i++) {
             if (state_bucket[i]) {
-                print("\tState ");
-                printint(i);
-                print(": ");
+                printf("\tState %d: ", i);
                 for (int chr = 0; chr < 129; chr++) {
                     if (trans_bucket[i][chr]) {
                         re_print_char(chr);
@@ -533,10 +526,7 @@ void re_print_state(int id, re_dfa_t *dfa) {
 }
 
 void re_print_dfa(re_dfa_t *re) {
-    print("Printing DFA with ");
-    printint(re->n_states);
-    println(" States");
-    println("");
+    printf("Printing DFA with %d states\n\n", re->n_states);
 
     for (int i = 0; i < re->n_states; i++) re_print_state(i, re);
 
