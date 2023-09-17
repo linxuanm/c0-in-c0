@@ -62,18 +62,13 @@ struct re_match_ctx_t {
 };
 typedef struct re_match_ctx_t re_match_ctx_t;
 
-bool re_parse_or(re_ctx_t *ctx, int from, int to);
-bool re_parse_seq(re_ctx_t *ctx, int from, int to);
-bool re_parse_term(re_ctx_t *ctx, int from, int to);
-bool re_parse_atom(re_ctx_t *ctx, int from, int to);
-bool re_parse_class(re_ctx_t *ctx, int from, int to);
+bool __re_parse_or(re_ctx_t *ctx, int from, int to);
+bool __re_parse_seq(re_ctx_t *ctx, int from, int to);
+bool __re_parse_term(re_ctx_t *ctx, int from, int to);
+bool __re_parse_atom(re_ctx_t *ctx, int from, int to);
+bool __re_parse_class(re_ctx_t *ctx, int from, int to);
 
-// dumb shorthand since expression in an assertion must be pure
-void re_assert(bool cond) {
-    //@assert cond;
-}
-
-int re_new_state(re_ctx_t *ctx, bool is_term_state) {
+int __re_new_state(re_ctx_t *ctx, bool is_term_state) {
     if (ctx->is_test) return -1;
 
     int state_id = ctx->n_states;
@@ -89,7 +84,7 @@ int re_new_state(re_ctx_t *ctx, bool is_term_state) {
     return state_id;
 }
 
-void re_lazy_init_transition(re_state_t *from_state, int chr) {
+void __re_lazy_init_transition(re_state_t *from_state, int chr) {
     if (from_state->n_edges[chr] == 0) {
         /*
             The size here dictates how many out-going edges with the same
@@ -109,75 +104,74 @@ void re_lazy_init_transition(re_state_t *from_state, int chr) {
     return dummy;
 }*/
 
-bool re_eof_ctx(re_ctx_t *ctx)
+bool __re_eof_ctx(re_ctx_t *ctx)
 //@requires ctx->pc <= string_length(ctx->regex);
 {
     return ctx->pc == string_length(ctx->regex);
 }
 
-char re_peek_ctx(re_ctx_t *ctx)
-//@requires !re_eof_ctx(ctx);
+char __re_peek_ctx(re_ctx_t *ctx)
+//@requires !__re_eof_ctx(ctx);
 {
     return string_charat(ctx->regex, ctx->pc);
 }
 
-bool re_is_sep_char(re_ctx_t *ctx)
+bool __re_is_sep_char(re_ctx_t *ctx)
 //@requires ctx->pc <= string_length(ctx->regex);
 {
-    if (re_eof_ctx(ctx)) return true;
+    if (__re_eof_ctx(ctx)) return true;
 
-    char peek = re_peek_ctx(ctx);
+    char peek = __re_peek_ctx(ctx);
     return peek == ')' || peek == '|';
 }
 
-bool re_consume(char expect, re_ctx_t *ctx)
+bool __re_consume(char expect, re_ctx_t *ctx)
 //@requires ctx->pc <= string_length(ctx->regex);
 {
     // explicit check for more explicit error message (thus the loose @requires)
-    if (re_eof_ctx(ctx)) {
+    if (__re_eof_ctx(ctx)) {
         println("Regex Syntax Error: unexpected end of input");
         return false;
     }
 
-    char peek = re_peek_ctx(ctx);
+    char peek = __re_peek_ctx(ctx);
     bool match = peek == expect;
     if (match) ctx->pc++;
     else {
-        printf(
-            "Regex Syntax Error: unexpected character '%c', expecting '%c'",
-            peek, expect
-        );
+        print("Regex Syntax Error: unexpected character '");
+        printchar(peek);
+        print("', expecting '");
+        printchar(expect);
+        println("'");
     }
 
     return match;
 }
 
-void re_add_epsilon(re_ctx_t *ctx, int from, int to) {
+void __re_add_epsilon(re_ctx_t *ctx, int from, int to) {
     if (ctx->is_test) return;
 
     re_state_t *from_state = ctx->states[from];
-    re_lazy_init_transition(from_state, 128);
+    __re_lazy_init_transition(from_state, 128);
     from_state->edges[128][from_state->n_edges[128]] = to;
     from_state->n_edges[128]++;
 }
 
-bool re_consume_class_char(re_ctx_t *ctx, char *out) {
-    char peek = re_peek_ctx(ctx);
+bool ____re_consume_class_char(re_ctx_t *ctx, char *out) {
+    char peek = __re_peek_ctx(ctx);
     ctx->pc++;
     if (peek == '\\') {
-        if (re_eof_ctx(ctx)) {
+        if (__re_eof_ctx(ctx)) {
             println("Regex Syntax Error: unexpected EOF at escaped char");
             return false;
         }
 
-        peek = re_peek_ctx(ctx);
+        peek = __re_peek_ctx(ctx);
         ctx->pc++;
         if (peek != ']' && peek != '-' && peek != '^' && peek != '\\') {
-            printf(
-                "Regex Syntax Error: unexpected escaped char '%c' in character"
-                " class, expecting ']', '-' or '^'\n",
-                peek
-            );
+            print("Regex Syntax Error: unexpected escaped char '");
+            printchar(peek);
+            println("' in character class, expecting ']', '-' or '^'");
             return false;
         }
     }
@@ -186,26 +180,26 @@ bool re_consume_class_char(re_ctx_t *ctx, char *out) {
     return true;
 }
 
-void re_char_bucket_invert(bool[] bucket)
+void __re_char_bucket_invert(bool[] bucket)
 //@requires \length(bucket) == 128;
 {
     for (int i = 0; i < 128; i++) bucket[i] = !bucket[i];
 }
 
-void re_char_bucket_digits(bool[] bucket)
+void __re_char_bucket_digits(bool[] bucket)
 //@requires \length(bucket) == 128;
 {
     for (int i = 48; i < 48 + 10; i++) bucket[i] = true;
 }
 
-void re_char_bucket_alpha(bool[] bucket)
+void __re_char_bucket_alpha(bool[] bucket)
 //@requires \length(bucket) == 128;
 {
     for (int i = 65; i < 65 + 26; i++) bucket[i] = true;
     for (int i = 97; i < 97 + 26; i++) bucket[i] = true;
 }
 
-void re_char_bucket_whitespace(bool[] bucket)
+void __re_char_bucket_whitespace(bool[] bucket)
 //@requires \length(bucket) == 128;
 {
     bucket[char_ord(' ')] = true;
@@ -216,42 +210,43 @@ void re_char_bucket_whitespace(bool[] bucket)
     bucket[char_ord('\v')] = true;
 }
 
-bool re_parse_class(re_ctx_t *ctx, int from, int to) {
-    re_consume('[', ctx);
+bool __re_parse_class(re_ctx_t *ctx, int from, int to) {
+    __re_consume('[', ctx);
 
-    if (re_eof_ctx(ctx)) {
+    if (__re_eof_ctx(ctx)) {
         println("Regex Syntax Error: unexpected EOF before closing ']'");
         return false;
     }
 
     bool inverted = false;
-    if (re_peek_ctx(ctx) == '^') {
+    if (__re_peek_ctx(ctx) == '^') {
         inverted = true;
         ctx->pc++;
     }
 
     bool[] char_bucket = alloc_array(bool, 128);
-    while (!re_eof_ctx(ctx) && re_peek_ctx(ctx) != ']') {
+    while (!__re_eof_ctx(ctx) && __re_peek_ctx(ctx) != ']') {
         char *peek_ptr = alloc(char);
-        if (!re_consume_class_char(ctx, peek_ptr)) return false;
+        if (!____re_consume_class_char(ctx, peek_ptr)) return false;
 
         // parse character range
         if (
             ctx->pc + 1 < string_length(ctx->regex) &&
-            re_peek_ctx(ctx) == '-' &&
+            __re_peek_ctx(ctx) == '-' &&
             string_charat(ctx->regex, ctx->pc + 1) != ']'
         ) {
             ctx->pc++;
             char *to_ptr = alloc(char);
-            if (!re_consume_class_char(ctx, to_ptr)) return false;
+            if (!____re_consume_class_char(ctx, to_ptr)) return false;
             
             int from_char = char_ord(*peek_ptr);
             int to_char = char_ord(*to_ptr);
             if (to_char < from_char) {
-                printf(
-                    "Regex Syntax Error: bad character range [%c-%c]\n",
-                    *peek_ptr, *to_ptr
-                );
+                print("Regex Syntax Error: bad character range [");
+                printchar(*peek_ptr);
+                printchar('-');
+                printchar(*to_ptr);
+                println("]");
             }
 
             for (int i = from_char; i <= to_char; i++) {
@@ -262,33 +257,33 @@ bool re_parse_class(re_ctx_t *ctx, int from, int to) {
         }
     }
 
-    if (inverted) re_char_bucket_invert(char_bucket);
+    if (inverted) __re_char_bucket_invert(char_bucket);
 
     if (!ctx->is_test) {
         re_state_t *from_state = ctx->states[from];
         for (int chr = 0; chr < 128; chr++) {
             if (char_bucket[chr]) {
-                re_lazy_init_transition(from_state, chr);
+                __re_lazy_init_transition(from_state, chr);
                 from_state->edges[chr][from_state->n_edges[chr]] = to;
                 from_state->n_edges[chr]++;
             }
         }
     }
 
-    re_consume(']', ctx);
+    __re_consume(']', ctx);
     return true;
 }
 
-bool re_parse_atom(re_ctx_t *ctx, int from, int to)
-//@requires !re_eof_ctx(ctx);
+bool __re_parse_atom(re_ctx_t *ctx, int from, int to)
+//@requires !__re_eof_ctx(ctx);
 {
-    char peek = re_peek_ctx(ctx);
+    char peek = __re_peek_ctx(ctx);
     if (peek == '(') {
         ctx->pc++;
-        if (!re_parse_or(ctx, from, to)) return false;
-        if (!re_consume(')', ctx)) return false;
+        if (!__re_parse_or(ctx, from, to)) return false;
+        if (!__re_consume(')', ctx)) return false;
     } else if (peek == '[') {
-        if (!re_parse_class(ctx, from, to)) return false;
+        if (!__re_parse_class(ctx, from, to)) return false;
     } else if (peek == '?' || peek == '+' || peek == '*') {
         println("Regex Syntax Error: misplaced '?', '*' or '+'");
         return false;
@@ -297,7 +292,7 @@ bool re_parse_atom(re_ctx_t *ctx, int from, int to)
 
         bool[] bucket = alloc_array(bool, 128);
         if (peek == '\\') {
-            peek = re_peek_ctx(ctx);
+            peek = __re_peek_ctx(ctx);
             if (
                 peek != '+' && peek != '.' && peek != '*' &&
                 peek != '?' && peek != '|' && peek != '\\' &&
@@ -306,29 +301,31 @@ bool re_parse_atom(re_ctx_t *ctx, int from, int to)
                 peek != 'w' && peek != 'W' && peek != 's' &&
                 peek != 'S'
             ) {
-                printf("Regex Syntax Error: invalid escaped char '\\%c'", peek);
+                print("Regex Syntax Error: invalid escaped char '\\");
+                printchar(peek);
+                println("'");
                 return false;
             }
 
             if (peek == 'd') {
-                re_char_bucket_digits(bucket);
+                __re_char_bucket_digits(bucket);
             } else if (peek == 'D') {
-                re_char_bucket_digits(bucket);
-                re_char_bucket_invert(bucket);
+                __re_char_bucket_digits(bucket);
+                __re_char_bucket_invert(bucket);
             } else if (peek == 'w') {
                 bucket[char_ord('_')] = true;
-                re_char_bucket_alpha(bucket);
-                re_char_bucket_digits(bucket);
+                __re_char_bucket_alpha(bucket);
+                __re_char_bucket_digits(bucket);
             } else if (peek == 'W') {
                 bucket[char_ord('_')] = true;
-                re_char_bucket_alpha(bucket);
-                re_char_bucket_digits(bucket);
-                re_char_bucket_invert(bucket);
+                __re_char_bucket_alpha(bucket);
+                __re_char_bucket_digits(bucket);
+                __re_char_bucket_invert(bucket);
             } else if (peek == 's') {
-                re_char_bucket_whitespace(bucket);
+                __re_char_bucket_whitespace(bucket);
             } else if (peek == 'S') {
-                re_char_bucket_whitespace(bucket);
-                re_char_bucket_invert(bucket);
+                __re_char_bucket_whitespace(bucket);
+                __re_char_bucket_invert(bucket);
             } else {
                 bucket[char_ord(peek)] = true;
             }
@@ -342,7 +339,7 @@ bool re_parse_atom(re_ctx_t *ctx, int from, int to)
             re_state_t *from_state = ctx->states[from];
             for (int chr = 0; chr < 128; chr++) {
                 if (bucket[chr]) {
-                    re_lazy_init_transition(from_state, chr);
+                    __re_lazy_init_transition(from_state, chr);
                     from_state->edges[chr][from_state->n_edges[chr]] = to;
                     from_state->n_edges[chr]++;
                 }
@@ -354,58 +351,58 @@ bool re_parse_atom(re_ctx_t *ctx, int from, int to)
 }
 
 // term := group | group postfix
-bool re_parse_term(re_ctx_t *ctx, int from, int to)
-//@requires !re_eof_ctx(ctx);
+bool __re_parse_term(re_ctx_t *ctx, int from, int to)
+//@requires !__re_eof_ctx(ctx);
 {
     // in case of '+', the same edge needs to be generated twice
     int pc_store = ctx->pc;
     bool test_store = ctx->is_test;
     ctx->is_test = true;
-    int dummy_from = re_new_state(ctx, false);
-    int dummy_to = re_new_state(ctx, false);
-    if (!re_parse_atom(ctx, dummy_from, dummy_to)) return false;
+    int dummy_from = __re_new_state(ctx, false);
+    int dummy_to = __re_new_state(ctx, false);
+    if (!__re_parse_atom(ctx, dummy_from, dummy_to)) return false;
     ctx->is_test = test_store;
 
-    if (re_eof_ctx(ctx)) {
+    if (__re_eof_ctx(ctx)) {
         ctx->pc = pc_store;
-        return re_parse_atom(ctx, from, to);
+        return __re_parse_atom(ctx, from, to);
     }
 
-    char peek = re_peek_ctx(ctx);
+    char peek = __re_peek_ctx(ctx);
     ctx->pc = pc_store;
     if (peek == '?') {
-        re_add_epsilon(ctx, from, to);
-        re_assert(re_parse_atom(ctx, from, to));
+        __re_add_epsilon(ctx, from, to);
+        assert(__re_parse_atom(ctx, from, to));
         ctx->pc++;
     } else if (peek == '+') {
-        int interm = re_new_state(ctx, false);
+        int interm = __re_new_state(ctx, false);
 
-        re_assert(re_parse_atom(ctx, from, interm));
+        assert(__re_parse_atom(ctx, from, interm));
         ctx->pc = pc_store;
-        re_assert(re_parse_atom(ctx, interm, interm));
+        assert(__re_parse_atom(ctx, interm, interm));
 
-        re_add_epsilon(ctx, interm, to);
+        __re_add_epsilon(ctx, interm, to);
         ctx->pc++;
     } else if (peek == '*') {
-        int interm = re_new_state(ctx, false);
-        re_assert(re_parse_atom(ctx, interm, interm));
+        int interm = __re_new_state(ctx, false);
+        assert(__re_parse_atom(ctx, interm, interm));
         
-        re_add_epsilon(ctx, from, interm);
-        re_add_epsilon(ctx, interm, to);
+        __re_add_epsilon(ctx, from, interm);
+        __re_add_epsilon(ctx, interm, to);
         ctx->pc++;
     } else {
-        re_assert(re_parse_atom(ctx, from, to));
+        assert(__re_parse_atom(ctx, from, to));
     }
 
     return true;
 }
 
 // seq := term | term seq | ''
-bool re_parse_seq(re_ctx_t *ctx, int from, int to)
+bool __re_parse_seq(re_ctx_t *ctx, int from, int to)
 //@requires ctx->pc <= string_length(ctx->regex);
 {
-    if (re_is_sep_char(ctx)) {
-        re_add_epsilon(ctx, from, to);
+    if (__re_is_sep_char(ctx)) {
+        __re_add_epsilon(ctx, from, to);
         return true;
     }
     
@@ -413,29 +410,29 @@ bool re_parse_seq(re_ctx_t *ctx, int from, int to)
     int pc_store = ctx->pc;
     bool test_store = ctx->is_test;
     ctx->is_test = true;
-    int dummy_from = re_new_state(ctx, false);
-    int dummy_to = re_new_state(ctx, false);
-    if (!re_parse_term(ctx, dummy_from, dummy_to)) return false;
+    int dummy_from = __re_new_state(ctx, false);
+    int dummy_to = __re_new_state(ctx, false);
+    if (!__re_parse_term(ctx, dummy_from, dummy_to)) return false;
     ctx->is_test = test_store;
 
-    if (re_is_sep_char(ctx)) {
+    if (__re_is_sep_char(ctx)) {
         ctx->pc = pc_store;
-        return re_parse_term(ctx, from, to);
+        return __re_parse_term(ctx, from, to);
     } else {
         ctx->pc = pc_store;
-        int next = re_new_state(ctx, false);
-        return re_parse_term(ctx, from, next) && re_parse_seq(ctx, next, to);
+        int next = __re_new_state(ctx, false);
+        return __re_parse_term(ctx, from, next) && __re_parse_seq(ctx, next, to);
     }
 }
 
 // or := seq | seq '|' or
-bool re_parse_or(re_ctx_t *ctx, int from, int to)
+bool __re_parse_or(re_ctx_t *ctx, int from, int to)
 //@requires ctx->pc <= string_length(ctx->regex);
 {
-    if (!re_parse_seq(ctx, from, to)) return false;
-    while (!re_eof_ctx(ctx) && re_peek_ctx(ctx) == '|') {
+    if (!__re_parse_seq(ctx, from, to)) return false;
+    while (!__re_eof_ctx(ctx) && __re_peek_ctx(ctx) == '|') {
         ctx->pc++;
-        if (!re_parse_seq(ctx, from, to)) return false;
+        if (!__re_parse_seq(ctx, from, to)) return false;
     }
 
     return true;
@@ -447,16 +444,18 @@ re_dfa_t *re_parse_regex(string regex) {
     ctx->states = alloc_array(re_state_t *, 6969);
     ctx->pc = 0;
     ctx->regex = regex;
-    int start = re_new_state(ctx, false);
-    int end = re_new_state(ctx, true);
+    int start = __re_new_state(ctx, false);
+    int end = __re_new_state(ctx, true);
 
-    if (!re_parse_or(ctx, start, end)) {
+    if (!__re_parse_or(ctx, start, end)) {
         println("REGEX PARSE FAILED");
         return NULL;
     }
 
-    if (!re_eof_ctx(ctx)) {
-        printf("Regex Syntax Error: parse ended at char %d\n", ctx->pc);
+    if (!__re_eof_ctx(ctx)) {
+        print("Regex Syntax Error: parse ended at char ");
+        printint(ctx->pc);
+        printchar('\n');
         println("REGEX PARSE FAILED");
         return NULL;
     }
@@ -483,7 +482,8 @@ void re_print_char(int ord) {
 
 void re_print_state(int id, re_dfa_t *dfa) {
     re_state_t *state = dfa->states[id];
-    printf("State %d", id);
+    print("State ");
+    printint(id);
     if (state->is_term_state) print(" (FINISH)");
     println(":");
 
@@ -509,7 +509,9 @@ void re_print_state(int id, re_dfa_t *dfa) {
 
         for (int i = 0; i < dfa->n_states; i++) {
             if (state_bucket[i]) {
-                printf("\tState %d: ", i);
+                print("\tState ");
+                printint(i);
+                print(": ");
                 for (int chr = 0; chr < 129; chr++) {
                     if (trans_bucket[i][chr]) {
                         re_print_char(chr);
@@ -526,7 +528,10 @@ void re_print_state(int id, re_dfa_t *dfa) {
 }
 
 void re_print_dfa(re_dfa_t *re) {
-    printf("Printing DFA with %d states\n\n", re->n_states);
+    print("Printing DFA with ");
+    printint(re->n_states);
+    println(" States");
+    println("");
 
     for (int i = 0; i < re->n_states; i++) re_print_state(i, re);
 
@@ -537,7 +542,9 @@ void re_print_dfa(re_dfa_t *re) {
     Performs all epsilon transitions from state `id`. Returns the amount of
     added active states as a result of this action.
 */
-int re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx) {
+int __re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx)
+//@ensures \result >= 0;
+{
     re_state_t *state = re->states[id];
     int n_new_states = 0;
 
@@ -546,7 +553,7 @@ int re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx) {
         if (!active[to]) {
             active[to] = true;
             n_new_states++;
-            n_new_states += re_prop_epsilon(to, re, active, ctx);
+            n_new_states += __re_prop_epsilon(to, re, active, ctx);
 
             if (re->states[to]->is_term_state) {
                 ctx->last_term = ctx->pc + 1;
@@ -577,12 +584,12 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
 
     ctx->input = input;
 
-    // `re_prop_epsilon` records a terminal state as `ctx->pc + 1`, so setting
-    // `ctx->pc` to -1 is a quick hack to prevent `re_prop_epsilon` from
+    // `__re_prop_epsilon` records a terminal state as `ctx->pc + 1`, so setting
+    // `ctx->pc` to -1 is a quick hack to prevent `__re_prop_epsilon` from
     // recording 0 + 1 = 1 during the epsilon propagation of initial states
     ctx->pc = -1;
     ctx->last_term = 0;
-    ctx->n_active += re_prop_epsilon(0, re, ctx->active, ctx);
+    ctx->n_active += __re_prop_epsilon(0, re, ctx->active, ctx);
 
     for (
         ctx->pc = 0;
@@ -602,7 +609,7 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
                     if (!new_states[to_state]) {
                         new_states[to_state] = true;
                         n_new_states++;
-                        n_new_states += re_prop_epsilon(
+                        n_new_states += __re_prop_epsilon(
                             to_state, re, new_states, ctx
                         );
 
@@ -639,4 +646,22 @@ int re_match_length(string regex, string input, int begin_index) {
     re_dfa_t *re = re_parse_regex(regex);
     if (re == NULL) return -1; // regex error; see stdout for error message
     return re_run_dfa(re, input, begin_index);
+}
+
+int main() {
+    //@assert re_match_string("a|ac|dc", "a");
+    //@assert !re_match_string("a|ac|dc", "d");
+
+    //@assert re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "sCoTtY_dOg");
+    //@assert re_match_string("\\s*[a-zA-Z_][a-zA-Z0-9_]*", "   \tsCoTtY_dOg");
+    //@assert !re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "1SCOTTY");
+
+    //@assert re_match_string("abcdef|(gh)+ijkl", "abcdef");
+    //@assert re_match_string("abcdef|(gh)+ijkl", "ghghghghghijkl");
+    //@assert re_match_string("(a1(cd|ef|gh))", "a1cd");
+    //@assert !re_match_string("abcdef|ghijkl", "abdef");
+
+    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3) == 8;
+
+    return 0;
 }
