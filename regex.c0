@@ -647,21 +647,3 @@ int re_match_length(string regex, string input, int begin_index) {
     if (re == NULL) return -1; // regex error; see stdout for error message
     return re_run_dfa(re, input, begin_index);
 }
-
-int main() {
-    //@assert re_match_string("a|ac|dc", "a");
-    //@assert !re_match_string("a|ac|dc", "d");
-
-    //@assert re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "sCoTtY_dOg");
-    //@assert re_match_string("\\s*[a-zA-Z_][a-zA-Z0-9_]*", "   \tsCoTtY_dOg");
-    //@assert !re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "1SCOTTY");
-
-    //@assert re_match_string("abcdef|(gh)+ijkl", "abcdef");
-    //@assert re_match_string("abcdef|(gh)+ijkl", "ghghghghghijkl");
-    //@assert re_match_string("(a1(cd|ef|gh))", "a1cd");
-    //@assert !re_match_string("abcdef|ghijkl", "abdef");
-
-    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3) == 8;
-
-    return 0;
-}
