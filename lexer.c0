@@ -28,22 +28,25 @@ int l_tokenize(string code, l_token_t *[] tokens) {
 
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
-    string R_ESC = "\\n|\\t|\\v|\\b|\\r|\\f|\\a|\\\\|\\\'|\\\"";
+    string R_ESC = l_regex_or(
+        "[\\]n|[\\]t|[\\]v|[\\]b|[\\]r", 
+        "[\\]f|[\\]a|[\\][\\]|[\\]\'|[\\]\""
+    );
     string R_NCHAR = "[ !#-~]";
     string R_LCHAR = "[!-=?-~]";
     string R_SCHAR = l_regex_or(R_ESC, R_NCHAR);
-    string R_CCHAR = l_regex_or(R_SCHAR, "\"|\\0");
+    string R_CCHAR = l_regex_or(R_SCHAR, "\"|[\\]0");
     string R_STRLIT = format("\"%s*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
-    string R_LIT = R_NUM(R_NUM, R_NUM(R_CHRLIT, R_STRLIT));
+    string R_LIT = l_regex_or(R_NUM, l_regex_or(R_CHRLIT, R_STRLIT));
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
-    re_dfa_t *R_SEP = re_parse_regex("[()[]{},;]");
+    re_dfa_t *R_SEP = re_parse_regex("[()[\\]{},;]");
     re_dfa_t *R_ASN_OP = re_parse_regex(
         "=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
     );
-    re_dfa_t *R_WHITE = re_parse_regex("\\w*");
+    re_dfa_t *R_WHITE = re_parse_regex("\\s+");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
 
     // yes ik ugly
@@ -63,18 +66,36 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     token_types[4] = 'L';
 
     while (src_ptr != string_length(code)) {
-        int token_size;
-        char token_type;
-        string matched;
+        int token_size = 0;
+        char token_type = '\0';
 
-        token_size = re_run_dfa(R_IDENTIFIER, code, src_ptr);
-        if (token_size != 0) {
-            token_type = 'I';
-            matched = string_sub(code, src_ptr, src_ptr + token_size);
-        } else {
+        for (int i = 0; i < 5 && token_size == 0; i++) {
+            token_size = re_run_dfa(regexs[i], code, src_ptr);
+            if (token_size != 0) {
+                token_type = token_types[i];
+            }
+        }
 
+        // lexer failed
+        if (token_size == 0) {
+            printf("Invalid token at character position %d\n", src_ptr);
+            return -1;
+        }
+
+        string matched = string_sub(code, src_ptr, src_ptr + token_size);
+        src_ptr += token_size;
+
+        if (token_type != 'W') {
+            println(matched);
         }
     }
 
     return size;
+}
+
+int main() {
+    l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
+    l_tokenize("int main() {}", tokens);
+
+    return 0;
 }

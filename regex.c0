@@ -575,7 +575,9 @@ int __re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx)
         begin_index = 0
         This returns 3 as the DFA only matches the prefix "acd".
 */
-int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
+int re_run_dfa(re_dfa_t *re, string input, int begin_index)
+//@ensures \result >= 0;
+{
     re_match_ctx_t *ctx = alloc(re_match_ctx_t);
 
     ctx->active = alloc_array(bool, re->n_states);
