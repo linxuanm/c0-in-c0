@@ -1,5 +1,5 @@
 #use <string>
-#use "regex.c0"
+//#use "regex.c0"
 
 struct l_token_t {
     /*
@@ -15,7 +15,7 @@ struct l_token_t {
 typedef struct l_token_t l_token_t;
 
 string l_regex_or(string a, string b) {
-    return format("%s|%s", a, b);
+    return format("(%s)|(%s)", a, b);
 }
 
 /*
@@ -29,16 +29,16 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
     string R_ESC = l_regex_or(
-        "[\\]n|[\\]t|[\\]v|[\\]b|[\\]r", 
-        "[\\]f|[\\]a|[\\][\\]|[\\]\'|[\\]\""
+        "\\\\n|\\\\t|\\\\v|\\\\b|\\\\r", 
+        "\\\\f|\\\\a|\\\\|\\\\\'|\\\\\""
     );
     string R_NCHAR = "[ !#-~]";
     string R_LCHAR = "[!-=?-~]";
     string R_SCHAR = l_regex_or(R_ESC, R_NCHAR);
-    string R_CCHAR = l_regex_or(R_SCHAR, "\"|[\\]0");
+    string R_CCHAR = l_regex_or(R_SCHAR, "\"|\\\\0");
     string R_STRLIT = format("\"%s*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
-    string R_LIT = l_regex_or(R_NUM, l_regex_or(R_CHRLIT, R_STRLIT));
+    string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -86,16 +86,12 @@ int l_tokenize(string code, l_token_t *[] tokens) {
         src_ptr += token_size;
 
         if (token_type != 'W') {
-            println(matched);
+            tokens[size] = alloc(l_token_t);
+            tokens[size]->type = token_type;
+            tokens[size]->str = matched;
+            size++;
         }
     }
 
     return size;
-}
-
-int main() {
-    l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
-    l_tokenize("int main() {}", tokens);
-
-    return 0;
 }

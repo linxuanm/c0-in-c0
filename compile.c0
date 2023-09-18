@@ -1,0 +1,12 @@
+#use <conio>
+
+string compile(string code) {
+    l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
+    int n_tokens = l_tokenize(code, tokens);
+
+    for (int i = 0; i < n_tokens; i++) {
+        printf("%s: %c\n", tokens[i]->str, tokens[i]->type);
+    }
+
+    return "";
+}

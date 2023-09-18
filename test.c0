@@ -1,0 +1,7 @@
+int main() {
+
+    string code = f_read_file("samples/simple.c0");
+    compile(code);
+    
+    return 0;
+}

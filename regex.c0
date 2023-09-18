@@ -88,10 +88,10 @@ void __re_lazy_init_transition(re_state_t *from_state, int chr) {
     if (from_state->n_edges[chr] == 0) {
         /*
             The size here dictates how many out-going edges with the same
-            character can exist on a single state. 10 should suffice unless the
+            character can exist on a single state. 16 should suffice unless the
             user is entering some crazy regex.
         */
-        from_state->edges[chr] = alloc_array(int, 8);
+        from_state->edges[chr] = alloc_array(int, 16);
     }
 }
 
