@@ -35,8 +35,8 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     string R_NCHAR = "[ !#-~]";
     string R_LCHAR = "[!-=?-~]";
     string R_SCHAR = l_regex_or(R_ESC, R_NCHAR);
-    string R_CCHAR = l_regex_or(R_SCHAR, "\"|\\\\0");
-    string R_STRLIT = format("\"%s*\"", R_SCHAR);
+    string R_CCHAR = l_regex_or(R_SCHAR, "\\\\0");
+    string R_STRLIT = format("\"(%s)*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
     string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
 

@@ -1,5 +1,5 @@
 int main() {
-    string foo = "a;
+    string foo = "abc";
     int a = 12;
     a += 17;
     return a;

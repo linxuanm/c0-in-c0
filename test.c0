@@ -2,6 +2,7 @@ int main() {
 
     string code = f_read_file("samples/simple.c0");
     compile(code);
+    //printf("%d\n", re_match_length("[ !#-~]*", "abc\"", 0));
     
     return 0;
 }
