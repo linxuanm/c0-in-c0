@@ -1,8 +1,18 @@
+entrypoints Program;
+
+Prog. Program ::= Simp;
+
 token Asn ('0');
 token Idn ('1');
 token Key ('2');
 token Lit ('3');
 token Sep ('4');
+
+SAsnp. Simp ::= Exp "=" Exp ;
+SIncr. Simp ::= Exp "++" ;
+SDecr. Simp ::= Exp "--" ;
+SExpr. Simp ::= Exp ;
+SDecl. Simp ::= Typ Idn ;
 
 TIntr. Typ ::= "int" ;
 TBool. Typ ::= "bool" ;
