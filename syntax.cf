@@ -1,0 +1,75 @@
+token Asn ('0');
+token Idn ('1');
+token Key ('2');
+token Lit ('3');
+token Sep ('4');
+
+TIntr. Typ ::= "int" ;
+TBool. Typ ::= "bool" ;
+TStrn. Typ ::= "string" ;
+TChar. Typ ::= "char" ;
+TVoid. Typ ::= "void" ;
+TStar. Typ ::= Typ "*" ;
+TArry. Typ ::= Typ "[" "]" ;
+TStrt. Typ ::= "struct" Idn ;
+TAlis. Typ ::= Idn ;
+
+EParn. Exp0 ::= "(" Exp ")" ;
+ELitl. Exp0 ::= Lit ;
+EIden. Exp0 ::= Idn ;
+EArry. Exp0 ::= Exp0 "[" Exp "]" ;
+EAllc. Exp0 ::= "alloc" "(" Typ ")" ;
+EAlcA. Exp0 ::= "alloc_array" "(" Typ "," Exp ")" ;
+
+EArrw. Exp1 ::= Exp0 "->" Exp1 ;
+EAcce. Exp1 ::= Exp0 "." Exp1 ;
+_    . Exp1 ::= Exp0 ;
+
+ENegn. Exp2 ::= "!" Exp1 ;
+ESubt. Exp2 ::= "-" Exp1 ;
+ETild. Exp2 ::= "~" Exp1 ;
+EDerf. Exp2 ::= "*" Exp1 ;
+_    . Exp2 ::= Exp1 ;
+
+EMods. Exp3 ::= Exp2 "%" Exp3 ;
+EMuln. Exp3 ::= Exp2 "*" Exp3 ;
+EDivn. Exp3 ::= Exp2 "/" Exp3 ;
+_    . Exp3 ::= Exp2 ;
+
+EPlus. Exp4 ::= Exp3 "+" Exp4 ;
+EMins. Exp4 ::= Exp3 "-" Exp4 ;
+_    . Exp4 ::= Exp3 ;
+
+EShfR. Exp5 ::= Exp4 ">>" Exp5 ;
+EShfL. Exp5 ::= Exp4 "<<" Exp5 ;
+_    . Exp5 ::= Exp4 ;
+
+ELteq. Exp6 ::= Exp5 "<=" Exp6 ;
+EGteq. Exp6 ::= Exp5 ">=" Exp6 ;
+EGret. Exp6 ::= Exp5 ">" Exp6 ;
+ELess. Exp6 ::= Exp5 "<" Exp6 ;
+_    . Exp6 ::= Exp5 ;
+
+EEqul. Exp7 ::= Exp6 "==" Exp7 ;
+ENeql. Exp7 ::= Exp6 "!=" Exp7 ;
+_    . Exp7 ::= Exp6 ;
+
+EAmpr. Exp8 ::= Exp7 "&" Exp8 ;
+_    . Exp8 ::= Exp7 ;
+
+EExor. Exp9 ::= Exp8 "^" Exp9 ;
+_    . Exp9 ::= Exp8 ;
+
+EBtor. Exp10 ::= Exp9 "|" Exp10 ;
+_    . Exp10 ::= Exp9 ;
+
+ELand. Exp11 ::= Exp10 "&&" Exp11 ;
+_    . Exp11 ::= Exp10 ;
+
+ELgor. Exp12 ::= Exp11 "||" Exp12 ;
+_    . Exp12 ::= Exp11 ;
+
+ECond. Exp13 ::= Exp12 "?" Exp13 ":" Exp13 ;
+_    . Exp13 ::= Exp12 ;
+
+EExpr. Exp ::= Exp13 ;
