@@ -1,0 +1,26 @@
+struct ast_exp_t {
+
+};
+typedef struct ast_exp_t ast_exp_t;
+
+struct ast_type_t {
+    /*
+        - I: integer
+        - B: boolean
+        - S: string
+        - C: character
+        - V: void
+        - D: typedef identifier
+        - X: struct
+        - A: array
+        - P: pointer
+     */
+    char type;
+
+    // only used when type is 'D' or 'X'
+    string iden;
+
+    // only used when type is 'A' or 'P'
+    struct ast_type_t *content;
+};
+typedef struct ast_type_t ast_type_t;

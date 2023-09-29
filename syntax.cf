@@ -14,15 +14,17 @@ SDecr. Simp ::= Exp "--" ;
 SExpr. Simp ::= Exp ;
 SDecl. Simp ::= Typ Idn ;
 
-TIntr. Typ ::= "int" ;
-TBool. Typ ::= "bool" ;
-TStrn. Typ ::= "string" ;
-TChar. Typ ::= "char" ;
-TVoid. Typ ::= "void" ;
-TStar. Typ ::= Typ "*" ;
-TArry. Typ ::= Typ "[" "]" ;
-TStrt. Typ ::= "struct" Idn ;
-TAlis. Typ ::= Idn ;
+TIntr. Typ ::= "int" TypL ;
+TBool. Typ ::= "bool" TypL ;
+TStrn. Typ ::= "string" TypL ;
+TChar. Typ ::= "char" TypL ;
+TVoid. Typ ::= "void" TypL ;
+TStrt. Typ ::= "struct" Idn TypL ;
+TAlis. Typ ::= Idn TypL ;
+
+TStar. TypL ::= "*" TypL ;
+TArry. TypL ::= "[" "]" TypL ;
+TEpsn. TypL ::= ;
 
 EParn. Exp0 ::= "(" Exp ")" ;
 ELitl. Exp0 ::= Lit ;
