@@ -1,0 +1,27 @@
+#use <string>
+
+bool u_is_keyword(string word) {
+    return string_equal(word, "int")
+        || string_equal(word, "bool")
+        || string_equal(word, "string")
+        || string_equal(word, "char")
+        || string_equal(word, "void")
+        || string_equal(word, "struct")
+        || string_equal(word, "typedef")
+        || string_equal(word, "if")
+        || string_equal(word, "else")
+        || string_equal(word, "while")
+        || string_equal(word, "for")
+        || string_equal(word, "continue")
+        || string_equal(word, "break")
+        || string_equal(word, "return")
+
+        // treat `assert` as normal function as all params are EXP
+        //|| string_equal(word, "assert")
+
+        // treat `error` as normal function as all params are EXP
+        // || string_equal(word, "error")
+        
+        || string_equal(word, "alloc")
+        || string_equal(word, "alloc_array");
+}

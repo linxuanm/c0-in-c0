@@ -19,7 +19,7 @@ bool __p_is_ctx(p_ctx_t *ctx) {
 
     if (ctx->n_tokens < 0) return false;
     if (!(0 <= ctx->pc && ctx->pc < ctx->n_tokens)) return false;
-    //@assert \length(ctx->tokens) == ctx->n_tokens;
+    //@assert ctx->n_tokens <= \length(ctx->tokens);
 
     return true;
 }
@@ -46,7 +46,7 @@ p_ctx_t *p_create_ctx(int n_tokens, l_token_t *[] tokens)
 // BEGIN parsing stage
 
 ast_program_t *parse_tokens(int n_tokens, l_token_t *[] tokens)
-//@requires \length(tokens) == n_tokens;
+//@requires n_tokens <= \length(tokens);
 {
     p_ctx_t *ctx = p_create_ctx(n_tokens, tokens);
 

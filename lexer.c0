@@ -8,9 +8,15 @@ struct l_token_t {
         - K: keyword
         - L: literal
         - S: separator
+        - O: operator
+        - W: whitespace
     */
     char type;
     string str;
+
+    // token position
+    int row;
+    int col;
 };
 typedef struct l_token_t l_token_t;
 
@@ -39,6 +45,9 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     string R_STRLIT = format("\"(%s)*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
     string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
+    string R_OP_FST = "!|~|-|\\*|\\.|->|/|%|\\+|<<|>>|<|<=|>=|>|==|!=|&";
+    string R_OP_SND = "^|\\||&&|\\|\\||\\?|:|--|\\+\\+";
+    string R_OP = l_regex_or(R_OP_FST, R_OP_SND);
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -48,15 +57,17 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     );
     re_dfa_t *R_WHITE = re_parse_regex("\\s+");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
+    re_dfa_t *R_OPERATOR = re_parse_regex(R_OP);
 
     // yes ik ugly
-    int n_token_types = 5;
+    int n_token_types = 6;
     re_dfa_t *[] regexs = alloc_array(re_dfa_t *, n_token_types);
     regexs[0] = R_IDENTIFIER;
     regexs[1] = R_SEP;
     regexs[2] = R_ASN_OP;
     regexs[3] = R_WHITE;
     regexs[4] = R_LITERAL;
+    regexs[5] = R_OPERATOR;
 
     char[] token_types = alloc_array(char, n_token_types);
     token_types[0] = 'I';
@@ -64,12 +75,17 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     token_types[2] = 'A';
     token_types[3] = 'W';
     token_types[4] = 'L';
+    token_types[5] = 'O';
+
+    // tokenizer position init
+    int row = 1;
+    int col = 0;
 
     while (src_ptr != string_length(code)) {
         int token_size = 0;
         char token_type = '\0';
 
-        for (int i = 0; i < 5 && token_size == 0; i++) {
+        for (int i = 0; i < n_token_types && token_size == 0; i++) {
             token_size = re_run_dfa(regexs[i], code, src_ptr);
             if (token_size != 0) {
                 token_type = token_types[i];
@@ -78,18 +94,33 @@ int l_tokenize(string code, l_token_t *[] tokens) {
 
         // lexer failed
         if (token_size == 0) {
-            printf("Invalid token at character position %d\n", src_ptr);
+            string details = format("(Line %d, Col %d)", row, col);
+            printf(
+                "Lexer error: invalid token at character position %d %s\n",
+                src_ptr, details
+            );
             return -1;
         }
 
         string matched = string_sub(code, src_ptr, src_ptr + token_size);
-        src_ptr += token_size;
-
         if (token_type != 'W') {
             tokens[size] = alloc(l_token_t);
             tokens[size]->type = token_type;
             tokens[size]->str = matched;
+            tokens[size]->row = row;
+            tokens[size]->col = col;
             size++;
+        }
+
+        // increment misc position trackers
+        src_ptr += token_size;
+        for (int i = 0; i < string_length(matched); i++) {
+            if (string_charat(matched, i) == '\n') {
+                row++;
+                col = 0;
+            } else {
+                col++;
+            }
         }
     }
 

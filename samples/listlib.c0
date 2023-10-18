@@ -1,0 +1,101 @@
+typedef struct list_node list;
+struct list_node {
+  int data;
+  list* next;
+};
+
+typedef struct sortedlist_header sortedlist;
+struct sortedlist_header {
+  list* start;
+};
+
+bool is_segment(list* start, list* end);
+bool no_circularity(sortedlist* L);
+bool is_sortedlist(sortedlist* L);
+sortedlist* array_to_linkedlist(int[] A, int n);
+int list_length(sortedlist* L);
+int[] linkedlist_to_array(sortedlist* L);
+bool arr_eq(int[] A, int[] B, int n);
+
+bool is_sortedlist(sortedlist* L) {
+  if (L == NULL) return false;
+  if (!no_circularity(L)) return false;
+
+  list* cur = L->start;
+  if (cur == NULL) return true;
+
+  int prev_elem = cur->data;
+  while (cur->next != NULL) {
+    cur = cur->next;
+    if (prev_elem >= cur->data) return false;
+    prev_elem = cur->data;
+  }
+
+  return true;
+}
+
+bool is_segment(list* start, list* end) {
+  list* cur = start;
+  while (cur != end) {
+    if (cur->next == NULL) return false;
+    cur = cur->next;
+  }
+  return true;
+}
+
+bool no_circularity(sortedlist* L) {
+  if (L->start == NULL) return true;
+  list* tortoise = L->start;
+  list* hare = L->start->next;
+  while (tortoise != NULL && hare != NULL) {
+    if (hare == tortoise) return false;
+    tortoise = tortoise->next;
+    if (hare->next == NULL) return true;
+    hare = hare->next->next;
+  }
+  return true;
+}
+
+sortedlist* array_to_linkedlist(int[] A, int n) {
+  sortedlist* ret = alloc(sortedlist);
+  if (n > 0) {
+    list* curr = alloc(list);
+    ret->start = curr;
+    for (int i = 0; i < n - 1; i ++) {
+      curr->data = A[i];
+      curr->next = alloc(list);
+      curr = curr->next;
+    }
+    curr->data = A[n-1];
+    curr->next = NULL;
+  }
+  return ret;
+}
+
+int list_length(sortedlist* L) {
+  int len = 0;
+  list* curr = L->start;
+  while (curr != NULL) {
+    len++;
+    curr = curr->next;
+  }
+  return len;
+}
+
+int[] linkedlist_to_array(sortedlist* L) {
+  int len = list_length(L);
+  int[] ret = alloc_array(int, len);
+  list *curr = L->start;
+  for (int i = 0; i < len; i++) {
+    ret[i] = curr->data;
+    curr = curr->next;
+  }
+  return ret;
+}
+
+bool arr_eq(int[] A, int[] B, int n) {
+  for (int i = 0; i < n; i++) {
+    if (A[i] != B[i]) return false;
+  }
+  return true;
+}
