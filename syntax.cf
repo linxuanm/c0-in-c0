@@ -26,12 +26,23 @@ TStar. TypL ::= "*" TypL ;
 TArry. TypL ::= "[" "]" TypL ;
 TEpsn. TypL ::= ;
 
-EParn. Exp0 ::= "(" Exp ")" ;
-ELitl. Exp0 ::= Lit ;
-EIden. Exp0 ::= Idn ;
-EArry. Exp0 ::= Exp0 "[" Exp "]" ;
-EAllc. Exp0 ::= "alloc" "(" Typ ")" ;
-EAlcA. Exp0 ::= "alloc_array" "(" Typ "," Exp ")" ;
+ELOne. ExpLC ::= Exp ;
+ELCon. ExpLC ::= Exp "," ExpLC ;
+ELNil. ExpLN ::= ;
+
+ELEpt. ExpList ::= ExpLN ;
+ELLst. ExpList ::= ExpLC ;
+
+EParn. Exp0 ::= "(" Exp ")" ExpL ;
+ELitl. Exp0 ::= Lit ExpL ;
+EIden. Exp0 ::= Idn ExpL ;
+ECall. Exp0 ::= Idn "(" ExpList ")" ;
+EArry. Exp0 ::= Exp0 ExpL ;
+EAllc. Exp0 ::= "alloc" "(" Typ ")" ExpL ;
+EAlcA. Exp0 ::= "alloc_array" "(" Typ "," Exp ")" ExpL ;
+
+EIndx. ExpL ::= "[" Exp "]" ExpL ;
+EEpsn. ExpL ::= ;
 
 EArrw. Exp1 ::= Exp0 "->" Exp1 ;
 EAcce. Exp1 ::= Exp0 "." Exp1 ;

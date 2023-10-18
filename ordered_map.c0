@@ -106,6 +106,10 @@ bool __om_is_valid_tree(om_map_t *tree)
         && __om_valid_node_height(tree->root) != -1;
 }
 
+bool om_is_valid(om_map_t *tree) {
+    return tree != NULL && __om_is_valid_tree(tree);
+}
+
 // END contract functions
 
 // BEGIN forward declarations
@@ -341,7 +345,7 @@ void __om_recolor_or_rotate(om_map_t *tree, om_node_t *node) {
                 node->is_red = grand_red;
             } else {
                 // SHOULD BE UNREACHABLE.
-                //@assert 0 == 1;
+                error("oops");
             }
         }
     }

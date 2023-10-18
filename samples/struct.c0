@@ -1,0 +1,11 @@
+struct foo {
+    int abc;
+};
+
+struct bar;
+
+int main() {
+    struct foo *f = alloc(struct foo);
+    f->abc = 69;
+    return 0;
+}

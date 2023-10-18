@@ -1,8 +1,3 @@
-struct ast_exp_t {
-
-};
-typedef struct ast_exp_t ast_exp_t;
-
 struct ast_type_t {
     /*
         - I: integer
@@ -17,10 +12,85 @@ struct ast_type_t {
      */
     char type;
 
-    // only used when type is 'D' or 'X'
+    // 'D', 'X'
     string iden;
 
-    // only used when type is 'A' or 'P'
+    // 'A', 'P'
     struct ast_type_t *content;
 };
 typedef struct ast_type_t ast_type_t;
+
+struct ast_exp_t {
+    /*
+        - I: literal (int)
+        - C: literal (char)
+        - S: literal (string)
+        - D: identifier
+        - F: function call
+        - B: brackets (list indexing)
+        - A: alloc
+        - R: alloc array
+     */
+    char type;
+
+    // `I`, `C`, `S`
+    int lit_int;
+    char lit_chr;
+    string lit_str;
+
+    // `D`, `F`
+    string iden;
+
+    // `F`
+    struct ast_exp_t *[] params;
+
+    // `B`
+    struct ast_exp_t *list;
+    struct ast_exp_t *index;
+
+    // `A`, `R`
+    ast_type_t *alloc_type;
+
+    // `R`
+    int alloc_length;
+};
+typedef struct ast_exp_t ast_exp_t;
+
+struct ast_stmt_t {
+
+};
+typedef struct ast_stmt_t ast_stmt_t;
+
+struct ast_func_t {
+    // declared but not defined
+    bool undefined;
+};
+typedef struct ast_func_t ast_func_t;
+
+struct ast_program_t {
+    int n_types;
+    int n_funcs;
+    ast_type_t *[] types_pool;
+    ast_func_t *[] funcs_pool;
+    om_map_t *type_dict;
+    om_map_t *func_dict;
+};
+typedef struct ast_program_t ast_program_t;
+
+// BEGIN contracts
+
+bool ast_is_program(ast_program_t *prog) {
+    if (prog == NULL) return false;
+    if (prog->n_types < 0 || prog->n_funcs < 0) return false;
+    if (prog->n_funcs != om_size(prog->func_dict)) return false;
+    if (prog->n_types != om_size(prog->type_dict)) return false;
+
+    //@assert prog->n_types == \length(prog->types_pool);
+    //@assert prog->n_funcs == \length(prog->funcs_pool);
+
+    if (prog->type_dict == NULL || prog->func_dict == NULL) return false;
+
+    return true;
+}
+
+// END contracts

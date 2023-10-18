@@ -8,5 +8,7 @@ string compile(string code) {
         printf("%s: %c\n", tokens[i]->str, tokens[i]->type);
     }
 
+    ast_program_t *prog = parse_tokens(n_tokens, tokens);
+
     return "";
 }
