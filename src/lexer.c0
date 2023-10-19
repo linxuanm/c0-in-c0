@@ -104,6 +104,13 @@ int l_tokenize(string code, l_token_t *[] tokens) {
         }
 
         string matched = string_sub(code, src_ptr, src_ptr + token_size);
+
+        // change to keyword/literal for special identifiers
+        if (token_type == 'I') {
+            if (u_is_keyword(matched)) token_type = 'K';
+            else if (u_is_literal(matched)) token_type = 'L';
+        }
+
         if (token_type != 'W') {
             tokens[size] = alloc(l_token_t);
             tokens[size]->type = token_type;

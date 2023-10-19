@@ -25,3 +25,9 @@ bool u_is_keyword(string word) {
         || string_equal(word, "alloc")
         || string_equal(word, "alloc_array");
 }
+
+bool u_is_literal(string word) {
+    return string_equal(word, "true")
+        || string_equal(word, "false")
+        || string_equal(word, "NULL");
+}
