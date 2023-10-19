@@ -31,3 +31,21 @@ bool u_is_literal(string word) {
         || string_equal(word, "false")
         || string_equal(word, "NULL");
 }
+
+bool u_is_token_type(char type) {
+    return type == 'A' || type == 'I' || type == 'K'
+        || type == 'L' || type == 'S' || type == 'O';
+}
+
+string u_tok_type_to_readable(char type)
+//@requires u_is_token_type(type);
+{
+    if (type == 'A') return "assignment operator";
+    else if (type == 'I') return "identifier";
+    else if (type == 'K') return "keyword";
+    else if (type == 'L') return "literal";
+    else if (type == 'S') return "separator";
+    else if (type == 'O') return "operator";
+
+    error(format("Sanity Check: unknown token type '%c'", type));
+}

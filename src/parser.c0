@@ -7,6 +7,10 @@ struct p_ctx_t {
     int n_tokens;
     int pc;
     l_token_t *[] tokens;
+
+    // error handling (propagate instead of throwing)
+    bool err;
+    string err_msg;
 };
 typedef struct p_ctx_t p_ctx_t;
 
@@ -22,6 +26,12 @@ bool __p_is_ctx(p_ctx_t *ctx) {
     //@assert ctx->n_tokens <= \length(ctx->tokens);
 
     return true;
+}
+
+bool __p_is_eof(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    return ctx->pc == ctx->n_tokens;
 }
 
 // END contracts
@@ -42,6 +52,58 @@ p_ctx_t *p_create_ctx(int n_tokens, l_token_t *[] tokens)
 }
 
 // END constructors
+
+// BEGIN shorthands
+
+void __p_eof_err(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    ctx->err = true;
+    ctx->err_msg = "unexpected end of file";
+}
+
+bool __p_expect(char type, string word, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires u_is_token_type(type);
+//@ensures \result && !ctx->err || !\result && ctx->err;
+{
+    if (__p_is_eof(ctx)) {
+        __p_eof_err(ctx);
+        return false;
+    }
+
+    l_token_t *tok = ctx->tokens[ctx->pc];
+    ctx->pc++;
+
+    if (tok->type != type || !string_equal(tok->str, word)) {
+        ctx->err = true;
+        ctx->err_msg = format(
+            "expecting %s \"%s\", got %s \"%s\"",
+            u_tok_type_to_readable(type), word,
+            u_tok_type_to_readable(tok->type), tok->str
+        );
+
+        return false;
+    }
+
+    return true;
+}
+
+bool __p_expect_kw(string kwd, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@ensures \result && !ctx->err || !\result && ctx->err;
+{
+    return __p_expect('K', kwd, ctx);
+}
+
+bool __p_expect_sep(string sep, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@ensures \result && !ctx->err || !\result && ctx->err;
+{
+    return __p_expect('S', sep, ctx);
+}
+
+// END shorthands
 
 // BEGIN parsing stage
 
