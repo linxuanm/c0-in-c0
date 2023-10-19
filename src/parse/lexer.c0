@@ -34,7 +34,8 @@ int l_tokenize(string code, l_token_t *[] tokens) {
 
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
-    string R_ESC = l_regex_or(
+    string R_ESC = format(
+        "%s|%s", 
         "\\\\n|\\\\t|\\\\v|\\\\b|\\\\r", 
         "\\\\f|\\\\a|\\\\|\\\\\'|\\\\\""
     );
@@ -47,7 +48,7 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
     string R_OP_FST = "!|~|-|\\*|\\.|->|/|%|\\+|<<|>>|<|<=|>=|>|==|!=|&";
     string R_OP_SND = "^|\\||&&|\\|\\||\\?|:|--|\\+\\+";
-    string R_OP = l_regex_or(R_OP_FST, R_OP_SND);
+    string R_OP = format("%s|%s", R_OP_FST, R_OP_SND);
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");

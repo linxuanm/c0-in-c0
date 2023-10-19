@@ -1,1 +1,1 @@
-cc0 -d -w -x regex.c0 ordered_map.c0 file_io.c0 lexer.c0 ast.c0 parser.c0 compile.c0 test.c0
+cc0 -d -w -x lib/regex.c0 lib/ordered_map.c0 src/utils/utils.c0 src/utils/file_io.c0 src/parse/lexer.c0 src/ir/ast.c0 src/parse/parser.c0 src/compile.c0 tests/test.c0
