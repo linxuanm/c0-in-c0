@@ -17,11 +17,11 @@ bool u_is_keyword(string word) {
         || string_equal(word, "return")
 
         // treat `assert` as normal function as all params are EXP
-        //|| string_equal(word, "assert")
+        // || string_equal(word, "assert")
 
         // treat `error` as normal function as all params are EXP
         // || string_equal(word, "error")
-        
+
         || string_equal(word, "alloc")
         || string_equal(word, "alloc_array");
 }
