@@ -103,6 +103,10 @@ void __p_eof_err(p_ctx_t *ctx)
     __p_set_err(ctx, "unexpected end of file");
 }
 
+bool __p_match(l_token_t *tok, char type, string word) {
+    return tok->type == type && string_equal(tok->str, word);
+}
+
 bool __p_expect(char type, string word, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires u_is_token_type(type);
@@ -116,7 +120,7 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
     l_token_t *tok = ctx->tokens[ctx->pc];
     ctx->pc++;
 
-    if (tok->type != type || !string_equal(tok->str, word)) {
+    if (!__p_match(tok, type, word)) {
         ctx->err = true;
         ctx->err_msg = format(
             "expecting %s \"%s\", got %s \"%s\"",
@@ -163,6 +167,16 @@ l_token_t *__p_next(p_ctx_t *ctx)
 // END shorthands
 
 // BEGIN first sets
+
+// firset-set of left-recursion eliminated rule of TYPE
+bool __p_fset_typel(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    return __p_match(tok, 'S', "[") || __p_match(tok, 'O', "*");
+}
 
 bool __p_fset_type(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
@@ -240,7 +254,23 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         error("unreachable by first-set exclusion");
     }
 
-    // TODO: check for pointers and arrays
+    while (__p_fset_typel(ctx)) {
+        l_token_t *curr = __p_next(ctx);
+        ast_type_t *outer = alloc(ast_type_t);
+
+        if (__p_match(curr, 'S', "[")) {
+            if (!__p_expect_sep("]", ctx)) return NULL;
+
+            outer->type = 'A';
+        } else if (__p_match(curr, 'O', "*")) {
+            outer->type = 'P';
+        } else {
+            error("unreachable by first-set exclusion");
+        }
+
+        outer->content = type;
+        type = outer;
+    }
 
     return type;
 }

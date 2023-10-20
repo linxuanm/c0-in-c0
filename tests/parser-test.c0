@@ -29,46 +29,143 @@ void pt_test_basic() {
 
     ctx = pt_make_ctx("int", "");
     assert(pt_is_type(__p_parse_type(ctx), 'I'));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("bool", "");
     assert(pt_is_type(__p_parse_type(ctx), 'B'));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("string", "");
     assert(pt_is_type(__p_parse_type(ctx), 'S'));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("char", "");
     assert(pt_is_type(__p_parse_type(ctx), 'C'));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("void", "");
     assert(pt_is_type(__p_parse_type(ctx), 'V'));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("struct foo", "$foo");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'X'));
     assert(string_equal(type->iden, "foo"));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("foo", "foo");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'D'));
     assert(string_equal(type->iden, "foo"));
+    assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("HELLO_wOrLd", "HELLO_wOrLd");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'D'));
     assert(string_equal(type->iden, "HELLO_wOrLd"));
+    assert(__p_is_eof(ctx));
 
     // failing parses
     // only failing `struct` tested as fset excludes the rest
+
     ctx = pt_make_ctx("struct foo", "");
-    assert(__p_parse_type(ctx) == NULL);
+    assert(__p_parse_type(ctx) == NULL && ctx->err);
 
     ctx = pt_make_ctx("struct foo", "foo");
-    assert(__p_parse_type(ctx) == NULL);
+    assert(__p_parse_type(ctx) == NULL && ctx->err);
 
     ctx = pt_make_ctx("struct", "foo");
-    assert(__p_parse_type(ctx) == NULL);
+    assert(__p_parse_type(ctx) == NULL && ctx->err);
+
+    ctx = pt_make_ctx("struct string", "");
+    assert(__p_parse_type(ctx) == NULL && ctx->err);
+}
+
+void pt_test_suffix() {
+    ast_type_t *type;
+    p_ctx_t *ctx;
+
+    // basic pointers
+
+    ctx = pt_make_ctx("int* ", "");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'P'));
+    assert(pt_is_type(type->content, 'I'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("string ***", "");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'P'));
+    assert(pt_is_type(type->content, 'P'));
+    assert(pt_is_type(type->content->content, 'P'));
+    assert(pt_is_type(type->content->content->content, 'S'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("struct FOO **", "$FOO");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'P'));
+    assert(pt_is_type(type->content, 'P'));
+    assert(pt_is_type(type->content->content, 'X'));
+    assert(string_equal(type->content->content->iden, "FOO"));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("I_HATE_15122 *", "I_HATE_15122");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'P'));
+    assert(pt_is_type(type->content, 'D'));
+    assert(string_equal(type->content->iden, "I_HATE_15122"));
+    assert(__p_is_eof(ctx));
+
+    // basic arrays
+
+    ctx = pt_make_ctx("int[]", "");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'A'));
+    assert(pt_is_type(type->content, 'I'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("struct FOO[][]", "$FOO");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'A'));
+    assert(pt_is_type(type->content, 'A'));
+    assert(pt_is_type(type->content->content, 'X'));
+    assert(string_equal(type->content->content->iden, "FOO"));
+    assert(__p_is_eof(ctx));
+
+    // basic fails
+
+    ctx = pt_make_ctx("struct [][]", "");
+    type = __p_parse_type(ctx);
+    assert(type == NULL && ctx->err);
+
+    ctx = pt_make_ctx("int [[]", "");
+    type = __p_parse_type(ctx);
+    assert(type == NULL && ctx->err);
+
+    ctx = pt_make_ctx("string [][][][", "");
+    type = __p_parse_type(ctx);
+    assert(type == NULL && ctx->err);
+
+    ctx = pt_make_ctx("HELLO [][][]]", "HELLO");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'A'));
+    assert(!__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("int []*[)", "");
+    type = __p_parse_type(ctx);
+    assert(type == NULL && ctx->err);
+
+    // mixing pointers and arrays
+    ctx = pt_make_ctx("l_token_t *[]", "l_token_t");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'A'));
+    assert(pt_is_type(type->content, 'P'));
+    assert(pt_is_type(type->content->content, 'D'));
+    assert(string_equal(type->content->content->iden, "l_token_t"));
+    assert(__p_is_eof(ctx));
 }
 
 void pt_test_parser() {
     pt_test_basic();
+    pt_test_suffix();
 }
