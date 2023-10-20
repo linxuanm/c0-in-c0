@@ -37,6 +37,14 @@ bool u_is_token_type(char type) {
         || type == 'L' || type == 'S' || type == 'O';
 }
 
+bool u_is_native_type(string word) {
+    return string_equal(word, "int")
+        || string_equal(word, "bool")
+        || string_equal(word, "string")
+        || string_equal(word, "char")
+        || string_equal(word, "void");
+}
+
 string u_tok_type_to_readable(char type)
 //@requires u_is_token_type(type);
 {

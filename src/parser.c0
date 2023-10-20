@@ -11,6 +11,8 @@ struct p_ctx_t {
     // error handling (propagate instead of throwing)
     bool err;
     string err_msg;
+    int err_row;
+    int err_col;
 };
 typedef struct p_ctx_t p_ctx_t;
 
@@ -55,11 +57,50 @@ p_ctx_t *p_create_ctx(int n_tokens, l_token_t *[] tokens)
 
 // BEGIN shorthands
 
-void __p_eof_err(p_ctx_t *ctx)
+void __p_set_err(p_ctx_t *ctx, string msg);
+void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok);
+void __p_eof_err(p_ctx_t *ctx);
+bool __p_expect(char type, string word, p_ctx_t *ctx);
+bool __p_expect_kw(string kwd, p_ctx_t *ctx);
+bool __p_expect_sep(string sep, p_ctx_t *ctx);
+l_token_t *__p_peek(p_ctx_t *ctx);
+l_token_t *__p_next(p_ctx_t *ctx);
+
+void __p_set_err(p_ctx_t *ctx, string msg)
 //@requires __p_is_ctx(ctx);
+//@requires !ctx->err;
+//@requires ctx->err;
 {
     ctx->err = true;
-    ctx->err_msg = "unexpected end of file";
+    ctx->err_msg = msg;
+
+    if (__p_is_eof(ctx)) {
+        ctx->err_row = -1;
+        ctx->err_col = -1;
+    } else {
+        l_token_t *curr = __p_peek(ctx);
+        ctx->err_row = curr->row;
+        ctx->err_col = curr->col;
+    }
+}
+
+void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
+//@requires __p_is_ctx(ctx);
+//@requires !ctx->err;
+//@requires ctx->err;
+{
+    ctx->err = true;
+    ctx->err_msg = msg;
+    ctx->err_row = tok->row;
+    ctx->err_col = tok->col;
+}
+
+void __p_eof_err(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !ctx->err;
+//@requires ctx->err;
+{
+    __p_set_err(ctx, "unexpected end of file");
 }
 
 bool __p_expect(char type, string word, p_ctx_t *ctx)
@@ -103,7 +144,109 @@ bool __p_expect_sep(string sep, p_ctx_t *ctx)
     return __p_expect('S', sep, ctx);
 }
 
+l_token_t *__p_peek(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+{
+    return ctx->tokens[ctx->pc];
+}
+
+l_token_t *__p_next(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+{
+    l_token_t *tok = ctx->tokens[ctx->pc];
+    ctx->pc++;
+    return tok;
+}
+
 // END shorthands
+
+// BEGIN first sets
+
+bool __p_fset_type(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    string word = tok->str;
+    if (tok->type == 'K') {
+        return u_is_native_type(word) || string_equal(word, "struct");
+    }
+
+    // check type definitions for `struct <word>`
+    if (tok->type == 'I') {
+        string type_name = string_join("$", word);
+        return om_has_s(ctx->types, type_name);
+    }
+
+    return false;
+}
+
+// END first sets
+
+// BEGIN type production rules
+
+ast_type_t *__p_parse_type(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_type(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    ast_type_t *type = alloc(ast_type_t);
+    l_token_t *tok = __p_next(ctx);
+
+    if (tok->type == 'K') {
+        string word = tok->str;
+
+        if (string_equal(word, "int")) type->type = 'I';
+        else if (string_equal(word, "bool")) type->type = 'B';
+        else if (string_equal(word, "string")) type->type = 'S';
+        else if (string_equal(word, "char")) type->type = 'C';
+        else if (string_equal(word, "void")) type->type = 'V';
+        else if (string_equal(word, "struct")) {
+
+            if (__p_is_eof(ctx)) {
+                __p_eof_err(ctx);
+                return NULL;
+            }
+
+            l_token_t *iden = __p_next(ctx);
+            if (iden->type != 'I') {
+                __p_set_err_at(
+                    ctx, "expecting identifier after keyword \"struct\"", iden
+                );
+                return NULL;
+            }
+
+            if (!om_has_s(ctx->types, iden->str)) {
+                __p_set_err_at(
+                    ctx, format("struct \"%s\" is not defined", iden->str), iden
+                );
+                return NULL;
+            }
+
+            type->type = 'X';
+            type->iden = iden->str;
+        }
+
+    } else if (tok->type == 'I') {
+        // sanity check: first-set of TYPE already ensured this
+        assert(om_has_s(ctx->types, string_join("$", tok->str)));
+
+        type->type = 'D';
+        type->iden = tok->str;
+    } else {
+        error("unreachable by first-set exclusion");
+    }
+
+    // TODO: check for pointers and arrays
+
+    return type;
+}
+
+// END type production rules
 
 // BEGIN parsing stage
 
