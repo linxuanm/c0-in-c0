@@ -1,3 +1,5 @@
+#use <parse>
+
 struct p_ctx_t {
     // declarative information
     om_map_t *types;
@@ -306,7 +308,133 @@ bool __p_fset_exp(p_ctx_t *ctx)
 // BEGIN expression production rules
 // this is gonna be hell; check `syntax.cf` for precedence info
 
+ast_exp_t *__p_parse_exp0(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp1(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp2(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp3(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp4(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp5(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp6(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp7(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp8(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp9(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp10(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp11(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp12(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp13(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
 
+ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_exp(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    ast_exp_t *exp = alloc(ast_exp_t);
+    l_token_t *tok = __p_next(ctx);
+
+    // parenthesized expression
+    if (__p_match(tok, 'S', "(")) {
+
+        // yay alloc and immediate dealloc im very good at programming
+        exp = __p_parse_exp(ctx);
+        if (exp == NULL) return NULL;
+        __p_expect_sep(")", ctx);
+
+    // literal
+    } else if (tok->type == 'L') {
+        string lit_str = tok->str;
+        char fst = string_charat(lit_str, 0);
+
+        if (fst == '\'') {
+            exp->type = 'C';
+            exp->lit_chr = string_charat(lit_str, 1);
+        } else if (fst == '"') {
+            exp->type = 'S';
+            exp->lit_str = string_sub(lit_str, 1, string_length(lit_str) - 1);
+        } else if (string_equal(lit_str, "true")) {
+            exp->type = 'B';
+            exp->lit_boo = true;
+        } else if (string_equal(lit_str, "false")) {
+            exp->type = 'B';
+            exp->lit_boo = false;
+        } else if (string_equal(lit_str, "NULL")) {
+            exp->type = 'N';
+        } else {
+            exp->type = 'I';
+            int *parsed = parse_int(lit_str, 10);
+            if (parsed == NULL) {
+                // sanity check: someone slipped in an invalid integer literal!
+                error("invalid integer literal");
+            }
+
+            exp->lit_int = *parsed;
+        }
+
+    // identifier
+    } else if (tok->type == 'I') {
+        string iden = tok->str;
+        if (!__p_can_be_var(iden, ctx)) {
+            error("unreachable code by first-set exclusion");
+        }
+
+        if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'S', "(")) {
+            // TODO: func call parsing
+            error("func call parsing not implemented");
+        } else {
+            exp->type = 'D';
+            exp->iden = iden;
+        }
+
+    // `alloc`
+    } else if (__p_match(tok, 'K', "alloc")) {
+        exp->type = 'A';
+        if (!__p_expect_sep("(", ctx)) return NULL;
+
+        if (!__p_fset_type(ctx)) {
+            __p_set_err(ctx, "expecting type in \"alloc\"");
+            return NULL;
+        }
+        exp->alloc_type = __p_parse_type(ctx);
+        if (exp->alloc_type == NULL) return NULL;
+
+        if (!__p_expect_sep(")", ctx)) return NULL;
+
+    // `alloc_array`
+    } else if (__p_match(tok, 'K', "alloc_array")) {
+        exp->type = 'R';
+        if (!__p_expect_sep("(", ctx)) return NULL;
+
+        if (!__p_fset_type(ctx)) {
+            __p_set_err(ctx, "expecting type in \"alloc_array\"");
+            return NULL;
+        }
+        exp->alloc_type = __p_parse_type(ctx);
+        if (exp->alloc_type == NULL) return NULL;
+
+        if (!__p_expect_sep(",", ctx)) return NULL;
+
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(ctx, "expecting expression in \"alloc_array\"");
+            return NULL;
+        }
+        exp->alloc_length = __p_parse_exp(ctx);
+        if (exp->alloc_type == NULL) return NULL;
+
+        if (!__p_expect_sep(")", ctx)) return NULL;
+
+    } else {
+        error("unreachable by first-set exclusion");
+    }
+
+    // TODO: bracket suffix check
+
+    return exp;
+}
+
+ast_exp_t *__p_parse_exp(p_ctx_t *ctx) {
+    return NULL;
+}
 
 // END expression production rules
 

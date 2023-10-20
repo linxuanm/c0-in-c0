@@ -25,9 +25,11 @@ struct ast_exp_t {
         - I: literal (int)
         - C: literal (char)
         - S: literal (string)
+        - B: literal (boolean)
+        - N: literal (NULL)
         - D: identifier
         - F: function call
-        - B: brackets (list indexing)
+        - X: brackets (list indexing)
         - A: alloc
         - R: alloc array
      */
@@ -37,6 +39,7 @@ struct ast_exp_t {
     int lit_int;
     char lit_chr;
     string lit_str;
+    bool lit_boo;
 
     // `D`, `F`
     string iden;
@@ -52,7 +55,7 @@ struct ast_exp_t {
     ast_type_t *alloc_type;
 
     // `R`
-    int alloc_length;
+    struct ast_exp_t *alloc_length;
 };
 typedef struct ast_exp_t ast_exp_t;
 
