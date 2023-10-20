@@ -16,7 +16,7 @@ string compile(string code) {
 
     c_debug_tokens(n_tokens, tokens);
 
-    ast_program_t *prog = parse_tokens(n_tokens, tokens);
+    ast_program_t *prog = p_parse_tokens(n_tokens, tokens);
     if (prog == NULL) return "";
 
     return "";

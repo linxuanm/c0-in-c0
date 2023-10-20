@@ -1,0 +1,74 @@
+#use <parse>
+
+bool pt_is_type(ast_type_t *type, char expected) {
+    return type != NULL && type->type == expected;
+}
+
+p_ctx_t *pt_make_ctx(string code, string prelude) {
+    l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
+    int n_tokens = l_tokenize(code, tokens);
+    assert(n_tokens != -1);
+
+    p_ctx_t *ctx = p_create_ctx(n_tokens, tokens);
+
+    int n_types = num_tokens(prelude);
+    string[] types = parse_tokens(prelude);
+
+    for (int i = 0; i < n_types; i++) {
+        om_insert_s(ctx->types, types[i], 0);
+    }
+
+    return ctx;
+}
+
+void pt_test_basic() {
+    ast_type_t *type;
+    p_ctx_t *ctx;
+
+    // basic types
+
+    ctx = pt_make_ctx("int", "");
+    assert(pt_is_type(__p_parse_type(ctx), 'I'));
+
+    ctx = pt_make_ctx("bool", "");
+    assert(pt_is_type(__p_parse_type(ctx), 'B'));
+
+    ctx = pt_make_ctx("string", "");
+    assert(pt_is_type(__p_parse_type(ctx), 'S'));
+
+    ctx = pt_make_ctx("char", "");
+    assert(pt_is_type(__p_parse_type(ctx), 'C'));
+
+    ctx = pt_make_ctx("void", "");
+    assert(pt_is_type(__p_parse_type(ctx), 'V'));
+
+    ctx = pt_make_ctx("struct foo", "$foo");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'X'));
+    assert(string_equal(type->iden, "foo"));
+
+    ctx = pt_make_ctx("foo", "foo");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'D'));
+    assert(string_equal(type->iden, "foo"));
+
+    ctx = pt_make_ctx("HELLO_wOrLd", "HELLO_wOrLd");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'D'));
+    assert(string_equal(type->iden, "HELLO_wOrLd"));
+
+    // failing parses
+    // only failing `struct` tested as fset excludes the rest
+    ctx = pt_make_ctx("struct foo", "");
+    assert(__p_parse_type(ctx) == NULL);
+
+    ctx = pt_make_ctx("struct foo", "foo");
+    assert(__p_parse_type(ctx) == NULL);
+
+    ctx = pt_make_ctx("struct", "foo");
+    assert(__p_parse_type(ctx) == NULL);
+}
+
+void pt_test_parser() {
+    pt_test_basic();
+}

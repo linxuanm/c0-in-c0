@@ -22,9 +22,9 @@ bool __p_is_ctx(p_ctx_t *ctx) {
     if (ctx == NULL) return false;
     if (!om_is_valid(ctx->types)) return false;
     if (!om_is_valid(ctx->funcs)) return false;
-
+    
     if (ctx->n_tokens < 0) return false;
-    if (!(0 <= ctx->pc && ctx->pc < ctx->n_tokens)) return false;
+    if (!(0 <= ctx->pc && ctx->pc <= ctx->n_tokens)) return false;
     //@assert ctx->n_tokens <= \length(ctx->tokens);
 
     return true;
@@ -69,7 +69,7 @@ l_token_t *__p_next(p_ctx_t *ctx);
 void __p_set_err(p_ctx_t *ctx, string msg)
 //@requires __p_is_ctx(ctx);
 //@requires !ctx->err;
-//@requires ctx->err;
+//@ensures ctx->err;
 {
     ctx->err = true;
     ctx->err_msg = msg;
@@ -87,7 +87,7 @@ void __p_set_err(p_ctx_t *ctx, string msg)
 void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
 //@requires __p_is_ctx(ctx);
 //@requires !ctx->err;
-//@requires ctx->err;
+//@ensures ctx->err;
 {
     ctx->err = true;
     ctx->err_msg = msg;
@@ -98,7 +98,7 @@ void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
 void __p_eof_err(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !ctx->err;
-//@requires ctx->err;
+//@ensures ctx->err;
 {
     __p_set_err(ctx, "unexpected end of file");
 }
@@ -177,8 +177,7 @@ bool __p_fset_type(p_ctx_t *ctx)
 
     // check type definitions for `struct <word>`
     if (tok->type == 'I') {
-        string type_name = string_join("$", word);
-        return om_has_s(ctx->types, type_name);
+        return om_has_s(ctx->types, word);
     }
 
     return false;
@@ -220,7 +219,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
                 return NULL;
             }
 
-            if (!om_has_s(ctx->types, iden->str)) {
+            if (!om_has_s(ctx->types, string_join("$", iden->str))) {
                 __p_set_err_at(
                     ctx, format("struct \"%s\" is not defined", iden->str), iden
                 );
@@ -233,7 +232,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
     } else if (tok->type == 'I') {
         // sanity check: first-set of TYPE already ensured this
-        assert(om_has_s(ctx->types, string_join("$", tok->str)));
+        assert(om_has_s(ctx->types, tok->str));
 
         type->type = 'D';
         type->iden = tok->str;
@@ -250,7 +249,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
 // BEGIN parsing stage
 
-ast_program_t *parse_tokens(int n_tokens, l_token_t *[] tokens)
+ast_program_t *p_parse_tokens(int n_tokens, l_token_t *[] tokens)
 //@requires n_tokens <= \length(tokens);
 {
     p_ctx_t *ctx = p_create_ctx(n_tokens, tokens);
