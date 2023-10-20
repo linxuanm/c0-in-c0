@@ -36,8 +36,7 @@ ELLst. ExpList ::= ExpLC ;
 EParn. Exp0 ::= "(" Exp ")" ExpL ;
 ELitl. Exp0 ::= Lit ExpL ;
 EIden. Exp0 ::= Idn ExpL ;
-ECall. Exp0 ::= Idn "(" ExpList ")" ;
-EArry. Exp0 ::= Exp0 ExpL ;
+ECall. Exp0 ::= Idn "(" ExpList ")" ExpL ;
 EAllc. Exp0 ::= "alloc" "(" Typ ")" ExpL ;
 EAlcA. Exp0 ::= "alloc_array" "(" Typ "," Exp ")" ExpL ;
 

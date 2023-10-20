@@ -1,3 +1,5 @@
+// this is a comment
+
 typedef struct list_node list;
 struct list_node {
   int data;
@@ -99,3 +101,5 @@ bool arr_eq(int[] A, int[] B, int n) {
   }
   return true;
 }
+
+// this is a trailing comment

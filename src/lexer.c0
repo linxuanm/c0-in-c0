@@ -56,7 +56,7 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     re_dfa_t *R_ASN_OP = re_parse_regex(
         "=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
     );
-    re_dfa_t *R_WHITE = re_parse_regex("\\s+");
+    re_dfa_t *R_WHITE = re_parse_regex("(\\s+)|(//[^\n]*\n)");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
     re_dfa_t *R_OPERATOR = re_parse_regex(R_OP);
 

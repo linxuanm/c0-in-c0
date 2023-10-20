@@ -65,6 +65,7 @@ bool __p_expect_kw(string kwd, p_ctx_t *ctx);
 bool __p_expect_sep(string sep, p_ctx_t *ctx);
 l_token_t *__p_peek(p_ctx_t *ctx);
 l_token_t *__p_next(p_ctx_t *ctx);
+bool __p_can_be_var(string var, p_ctx_t *ctx);
 
 void __p_set_err(p_ctx_t *ctx, string msg)
 //@requires __p_is_ctx(ctx);
@@ -164,9 +165,15 @@ l_token_t *__p_next(p_ctx_t *ctx)
     return tok;
 }
 
+bool __p_can_be_var(string var, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    return !om_has_s(ctx->types, var) && !om_has_s(ctx->funcs, var);
+}
+
 // END shorthands
 
-// BEGIN first sets
+// BEGIN fset for types
 
 // firset-set of left-recursion eliminated rule of TYPE
 bool __p_fset_typel(p_ctx_t *ctx)
@@ -197,7 +204,7 @@ bool __p_fset_type(p_ctx_t *ctx)
     return false;
 }
 
-// END first sets
+// END fset for types
 
 // BEGIN type production rules
 
@@ -276,6 +283,32 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 }
 
 // END type production rules
+
+// BEGIN fset for expressions
+
+bool __p_fset_exp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    if (__p_match(tok, 'S', "(")) return true;
+    if (tok->type == 'L') return true;
+    if (tok->type == 'I' && __p_can_be_var(tok->str, ctx)) return true;
+    if (__p_match(tok, 'K', "alloc")) return true;
+    if (__p_match(tok, 'K', "alloc_array")) return true;
+
+    return false;
+}
+
+// END fset for expressions
+
+// BEGIN expression production rules
+// this is gonna be hell; check `syntax.cf` for precedence info
+
+
+
+// END expression production rules
 
 // BEGIN parsing stage
 
