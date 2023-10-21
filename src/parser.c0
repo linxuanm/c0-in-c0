@@ -320,7 +320,14 @@ bool __p_fset_comma(p_ctx_t *ctx)
 // BEGIN expression production rules
 // this is gonna be hell; check `syntax.cf` for precedence info
 
-ast_exp_t *__p_parse_exp0(p_ctx_t *ctx);
+// basic exp parsing
+ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
+
+// operator precedence
+ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level);
+/*
 ast_exp_t *__p_parse_exp1(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp2(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp3(p_ctx_t *ctx);
@@ -334,9 +341,9 @@ ast_exp_t *__p_parse_exp10(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp11(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp12(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp13(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
+*/
 
-ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
+ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
@@ -493,7 +500,7 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
 //@requires __p_fset_exp(ctx);
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
-    return __p_parse_exp0(ctx);
+    return __p_parse_exp_atom(ctx);
 }
 
 // END expression production rules
