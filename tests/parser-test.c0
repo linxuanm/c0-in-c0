@@ -8,7 +8,7 @@ bool pt_is_exp(ast_exp_t *exp, char expected) {
     return exp != NULL && exp->type == expected;
 }
 
-p_ctx_t *pt_make_ctx(string code, string type_names, string func_names) {
+p_ctx_t *pt_make_ctx(string code, string type_names) {
     l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
     int n_tokens = l_tokenize(code, tokens);
     assert(n_tokens != -1);
@@ -21,12 +21,6 @@ p_ctx_t *pt_make_ctx(string code, string type_names, string func_names) {
         om_insert_s(ctx->types, types[i], 0);
     }
 
-    int n_funcs = num_tokens(func_names);
-    string[] funcs = parse_tokens(func_names);
-    for (int i = 0; i < n_funcs; i++) {
-        om_insert_s(ctx->funcs, funcs[i], 0);
-    }
-
     return ctx;
 }
 
@@ -36,39 +30,39 @@ void pt_test_type_basic() {
 
     // basic types
 
-    ctx = pt_make_ctx("int", "", "");
+    ctx = pt_make_ctx("int", "");
     assert(pt_is_type(__p_parse_type(ctx), 'I'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("bool", "", "");
+    ctx = pt_make_ctx("bool", "");
     assert(pt_is_type(__p_parse_type(ctx), 'B'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("string", "", "");
+    ctx = pt_make_ctx("string", "");
     assert(pt_is_type(__p_parse_type(ctx), 'S'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("char", "", "");
+    ctx = pt_make_ctx("char", "");
     assert(pt_is_type(__p_parse_type(ctx), 'C'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("void", "", "");
+    ctx = pt_make_ctx("void", "");
     assert(pt_is_type(__p_parse_type(ctx), 'V'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("struct foo", "$foo", "");
+    ctx = pt_make_ctx("struct foo", "$foo");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'X'));
     assert(string_equal(type->iden, "foo"));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("foo", "foo", "");
+    ctx = pt_make_ctx("foo", "foo");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'D'));
     assert(string_equal(type->iden, "foo"));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("HELLO_wOrLd", "HELLO_wOrLd", "");
+    ctx = pt_make_ctx("HELLO_wOrLd", "HELLO_wOrLd");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'D'));
     assert(string_equal(type->iden, "HELLO_wOrLd"));
@@ -77,19 +71,19 @@ void pt_test_type_basic() {
     // failing parses
     // only failing `struct` tested as fset excludes the rest
 
-    ctx = pt_make_ctx("struct foo", "", "");
+    ctx = pt_make_ctx("struct foo", "");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 
-    ctx = pt_make_ctx("struct foo", "foo", "");
+    ctx = pt_make_ctx("struct foo", "foo");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 
-    ctx = pt_make_ctx("struct foo", "", "$foo");
+    ctx = pt_make_ctx("struct foo", "");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 
-    ctx = pt_make_ctx("struct", "foo", "");
+    ctx = pt_make_ctx("struct", "foo");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 
-    ctx = pt_make_ctx("struct string", "", "");
+    ctx = pt_make_ctx("struct string", "");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 }
 
@@ -99,13 +93,13 @@ void pt_test_type_suffix() {
 
     // basic pointers
 
-    ctx = pt_make_ctx("int* ", "", "");
+    ctx = pt_make_ctx("int* ", "");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'P'));
     assert(pt_is_type(type->content, 'I'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("string ***", "", "");
+    ctx = pt_make_ctx("string ***", "");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'P'));
     assert(pt_is_type(type->content, 'P'));
@@ -113,7 +107,7 @@ void pt_test_type_suffix() {
     assert(pt_is_type(type->content->content->content, 'S'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("struct FOO **", "$FOO", "");
+    ctx = pt_make_ctx("struct FOO **", "$FOO");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'P'));
     assert(pt_is_type(type->content, 'P'));
@@ -121,7 +115,7 @@ void pt_test_type_suffix() {
     assert(string_equal(type->content->content->iden, "FOO"));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("I_HATE_15122 *", "I_HATE_15122", "");
+    ctx = pt_make_ctx("I_HATE_15122 *", "I_HATE_15122");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'P'));
     assert(pt_is_type(type->content, 'D'));
@@ -130,13 +124,13 @@ void pt_test_type_suffix() {
 
     // basic arrays
 
-    ctx = pt_make_ctx("int[]", "", "");
+    ctx = pt_make_ctx("int[]", "");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'A'));
     assert(pt_is_type(type->content, 'I'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("struct FOO[][]", "$FOO", "");
+    ctx = pt_make_ctx("struct FOO[][]", "$FOO");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'A'));
     assert(pt_is_type(type->content, 'A'));
@@ -146,29 +140,29 @@ void pt_test_type_suffix() {
 
     // basic fails
 
-    ctx = pt_make_ctx("struct [][]", "", "");
+    ctx = pt_make_ctx("struct [][]", "");
     type = __p_parse_type(ctx);
     assert(type == NULL && ctx->err);
 
-    ctx = pt_make_ctx("int [[]", "", "");
+    ctx = pt_make_ctx("int [[]", "");
     type = __p_parse_type(ctx);
     assert(type == NULL && ctx->err);
 
-    ctx = pt_make_ctx("string [][][][", "", "");
+    ctx = pt_make_ctx("string [][][][", "");
     type = __p_parse_type(ctx);
     assert(type == NULL && ctx->err);
 
-    ctx = pt_make_ctx("HELLO [][][]]", "HELLO", "");
+    ctx = pt_make_ctx("HELLO [][][]]", "HELLO");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'A'));
     assert(!__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("int []*[)", "", "");
+    ctx = pt_make_ctx("int []*[)", "");
     type = __p_parse_type(ctx);
     assert(type == NULL && ctx->err);
 
     // mixing pointers and arrays
-    ctx = pt_make_ctx("l_token_t *[]", "l_token_t", "");
+    ctx = pt_make_ctx("l_token_t *[]", "l_token_t");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'A'));
     assert(pt_is_type(type->content, 'P'));
@@ -183,38 +177,51 @@ void pt_test_exp_basic() {
 
     // basic expressions
 
-    ctx = pt_make_ctx("123", "", "");
+    ctx = pt_make_ctx("123", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'I'));
     assert(exp->lit_int == 123);
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("heLLo", "", "");
+    ctx = pt_make_ctx("heLLo", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'D'));
     assert(string_equal(exp->iden, "heLLo"));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("true", "", "");
+    ctx = pt_make_ctx("true", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'B'));
     assert(exp->lit_boo);
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("false", "", "");
+    ctx = pt_make_ctx("false", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'B'));
     assert(!exp->lit_boo);
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("(NULL)", "", "");
+    ctx = pt_make_ctx("(NULL)", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'N'));
     assert(__p_is_eof(ctx));
 
-    ctx = pt_make_ctx("hello(1, hi, 64)", "", "");
+    ctx = pt_make_ctx("hello(1, 1, 64)", "hi");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'F'));
+    assert(exp->n_params == 3);
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("foo()", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'F'));
+    assert(exp->n_params == 0);
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("foo(bar(), baz(rec(), rec2()))", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'F'));
+    assert(exp->n_params == 2);
     assert(__p_is_eof(ctx));
 }
 

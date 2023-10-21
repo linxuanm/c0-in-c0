@@ -3,7 +3,6 @@
 struct p_ctx_t {
     // declarative information
     om_map_t *types;
-    om_map_t *funcs;
 
     // token tracking
     int n_tokens;
@@ -23,7 +22,6 @@ typedef struct p_ctx_t p_ctx_t;
 bool __p_is_ctx(p_ctx_t *ctx) {
     if (ctx == NULL) return false;
     if (!om_is_valid(ctx->types)) return false;
-    if (!om_is_valid(ctx->funcs)) return false;
     
     if (ctx->n_tokens < 0) return false;
     if (!(0 <= ctx->pc && ctx->pc <= ctx->n_tokens)) return false;
@@ -47,7 +45,6 @@ p_ctx_t *p_create_ctx(int n_tokens, l_token_t *[] tokens)
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
     ctx->types = om_create_map();
-    ctx->funcs = om_create_map();
 
     ctx->n_tokens = n_tokens;
     ctx->tokens = tokens;
@@ -174,16 +171,10 @@ bool __p_can_be_var(string var, p_ctx_t *ctx)
     return !om_has_s(ctx->types, var);
 }
 
-bool __p_is_func_name(string name, p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    return !om_has_s(ctx->types, name) && om_has_s(ctx->funcs, name);
-}
-
 bool __p_is_type_name(string name, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 {
-    return om_has_s(ctx->types, name) && !om_has_s(ctx->funcs, name);
+    return om_has_s(ctx->types, name);
 }
 
 // END shorthands
@@ -408,11 +399,6 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
             if (!__p_expect_sep("(", ctx)) return NULL;
 
             exp->type = 'F';
-            if (!__p_is_func_name(iden, ctx)) {
-                string msg = format("function \"%s\" is undeclared", iden);
-                __p_set_err_at(ctx, msg, tok);
-                return NULL;
-            }
 
             int CONST_MAX_PARAMS = 64;
             exp->C_MAX_PARAMS = CONST_MAX_PARAMS;
