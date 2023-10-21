@@ -339,7 +339,7 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
         // yay alloc and immediate dealloc im very good at programming
         exp = __p_parse_exp(ctx);
         if (exp == NULL) return NULL;
-        __p_expect_sep(")", ctx);
+        if (!__p_expect_sep(")", ctx)) return NULL;
 
     // literal
     } else if (tok->type == 'L') {
@@ -432,8 +432,13 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
     return exp;
 }
 
-ast_exp_t *__p_parse_exp(p_ctx_t *ctx) {
-    return NULL;
+ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_exp(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    return __p_parse_exp0(ctx);
 }
 
 // END expression production rules

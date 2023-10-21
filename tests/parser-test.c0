@@ -4,6 +4,10 @@ bool pt_is_type(ast_type_t *type, char expected) {
     return type != NULL && type->type == expected;
 }
 
+bool pt_is_exp(ast_exp_t *exp, char expected) {
+    return exp != NULL && exp->type == expected;
+}
+
 p_ctx_t *pt_make_ctx(string code, string prelude) {
     l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
     int n_tokens = l_tokenize(code, tokens);
@@ -21,7 +25,7 @@ p_ctx_t *pt_make_ctx(string code, string prelude) {
     return ctx;
 }
 
-void pt_test_basic() {
+void pt_test_type_basic() {
     ast_type_t *type;
     p_ctx_t *ctx;
 
@@ -81,7 +85,7 @@ void pt_test_basic() {
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 }
 
-void pt_test_suffix() {
+void pt_test_type_suffix() {
     ast_type_t *type;
     p_ctx_t *ctx;
 
@@ -165,7 +169,50 @@ void pt_test_suffix() {
     assert(__p_is_eof(ctx));
 }
 
+void pt_test_exp_basic() {
+    ast_exp_t *exp;
+    p_ctx_t *ctx;
+
+    // basic expressions
+
+    ctx = pt_make_ctx("123", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'I'));
+    assert(exp->lit_int == 123);
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("heLLo", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'D'));
+    assert(string_equal(exp->iden, "heLLo"));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("true", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'B'));
+    assert(exp->lit_boo);
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("false", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'B'));
+    assert(!exp->lit_boo);
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("(NULL)", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'N'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("hello(123, 659, foo)", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'F'));
+    assert(__p_is_eof(ctx));
+}
+
 void pt_test_parser() {
-    pt_test_basic();
-    pt_test_suffix();
+    pt_test_type_basic();
+    pt_test_type_suffix();
+
+    pt_test_exp_basic();
 }
