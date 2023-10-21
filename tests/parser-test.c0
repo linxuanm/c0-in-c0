@@ -215,15 +215,36 @@ void pt_test_exp_basic() {
     ctx = pt_make_ctx("foo()", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'F'));
+    assert(string_equal(exp->iden, "foo"));
     assert(exp->n_params == 0);
     assert(__p_is_eof(ctx));
 
     ctx = pt_make_ctx("foo(bar(), baz(rec(), rec2()))", "");
     exp = __p_parse_exp(ctx);
     assert(pt_is_exp(exp, 'F'));
+    assert(string_equal(exp->iden, "foo"));
     assert(exp->n_params == 2);
     assert(__p_is_eof(ctx));
-}
+
+    ctx = pt_make_ctx("alloc(struct sortedlist *)", "$sortedlist");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'A'));
+    assert(pt_is_type(exp->alloc_type, 'P'));
+    assert(pt_is_type(exp->alloc_type->content, 'X'));
+    assert(string_equal(exp->alloc_type->content->iden, "sortedlist"));
+    assert(__p_is_eof(ctx));
+
+
+    ctx = pt_make_ctx("alloc_array(foo *, increment(10))", "foo");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'R'));
+    assert(pt_is_type(exp->alloc_type, 'P'));
+    assert(pt_is_type(exp->alloc_type->content, 'D'));
+    assert(string_equal(exp->alloc_type->content->iden, "foo"));
+    assert(pt_is_exp(exp->alloc_length, 'F'));
+    assert(exp->alloc_length->n_params == 1);
+    assert(string_equal(exp->alloc_length->iden, "increment"));
+    assert(__p_is_eof(ctx));}
 
 void pt_test_parser() {
     pt_test_type_basic();

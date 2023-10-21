@@ -399,6 +399,7 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
             if (!__p_expect_sep("(", ctx)) return NULL;
 
             exp->type = 'F';
+            exp->iden = iden;
 
             int CONST_MAX_PARAMS = 64;
             exp->C_MAX_PARAMS = CONST_MAX_PARAMS;
