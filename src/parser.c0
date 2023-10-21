@@ -315,6 +315,19 @@ bool __p_fset_comma(p_ctx_t *ctx)
     return __p_match(__p_peek(ctx), 'S', ",");
 }
 
+bool __p_fset_op(p_ctx_t *ctx, int n_ops, string[] ops)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    for (int i = 0; i < n_ops; i++) {
+        if (__p_match(tok, 'S', ops[i])) return true;
+    }
+
+    return false;
+}
+
 // END fset for expressions
 
 // BEGIN expression production rules
@@ -325,7 +338,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx);
 ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
 
 // operator precedence
-ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level);
 ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level);
 /*
 ast_exp_t *__p_parse_exp1(p_ctx_t *ctx);
@@ -501,6 +514,108 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
     return __p_parse_exp_atom(ctx);
+}
+
+// running `parse_tokens` and `num_tokens` each parse is reaaaaally slow but
+// there's no array literal in C0 so imma choose readability over efficiency
+// weeeeeeeeeeee
+ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_exp(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    int n_ops = num_tokens(raw_operators);
+    string[] ops = parse_tokens(raw_operators);
+
+    ast_exp_t *exp = __p_parse_exp_by_level(ctx, level - 1);
+    if (exp == NULL) return NULL;
+
+    while (__p_fset_op(ctx, n_ops, ops)) {
+        __p_next(ctx);
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(ctx, "expecting expression after binary operator");
+            return NULL;
+        }
+
+        ast_exp_t *next = __p_parse_exp_by_level(ctx, level - 1);
+        if (next == NULL) return NULL;
+        
+        ast_exp_t *combine = alloc(ast_exp_t);
+        combine->type = 'O';
+        combine->left = exp;
+        combine->right = next;
+        exp = combine;
+    }
+
+    return exp;
+}
+
+ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_exp(ctx);
+//@requires 0 <= level && level <= 13;
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    if (level == 0) {
+        return __p_parse_exp_atom(ctx);
+    } else if (level == 1) {
+        // TODO: manually do `.` and `->`
+        return __p_parse_exp_atom(ctx);
+    } else if (level == 2) {
+        // TODO: parse prefix operators
+        return __p_parse_exp_atom(ctx);
+    } else if (level == 3) {
+        return __p_parse_exp_binop(ctx, "* / %", level);
+    } else if (level == 4) {
+        return __p_parse_exp_binop(ctx, "+ -", level);
+    } else if (level == 5) {
+        return __p_parse_exp_binop(ctx, ">> <<", level);
+    } else if (level == 6) {
+        return __p_parse_exp_binop(ctx, "< > <= >=", level);
+    } else if (level == 7) {
+        return __p_parse_exp_binop(ctx, "== !=", level);
+    } else if (level == 8) {
+        return __p_parse_exp_binop(ctx, "&", level);
+    } else if (level == 9) {
+        return __p_parse_exp_binop(ctx, "^", level);
+    } else if (level == 10) {
+        return __p_parse_exp_binop(ctx, "|", level);
+    } else if (level == 11) {
+        return __p_parse_exp_binop(ctx, "&&", level);
+    } else if (level == 12) {
+        return __p_parse_exp_binop(ctx, "||", level);
+    } else if (level == 13) {
+        ast_exp_t *cond = __p_parse_exp_by_level(ctx, level - 1);
+
+        if (__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'O', "?")) {
+            __p_next(ctx);
+            if (!__p_fset_exp(ctx)) {
+                __p_set_err(ctx, "expecting expression after \"?\"");
+                return NULL;
+            }
+
+            ast_exp_t *if_exp = __p_parse_exp_by_level(ctx, level);
+            if (if_exp == NULL) return NULL;
+
+            if (!__p_expect('O', ":", ctx)) return NULL;
+
+            ast_exp_t *else_exp = __p_parse_exp_by_level(ctx, level);
+            if (else_exp == NULL) return NULL;
+
+            ast_exp_t *combine = alloc(ast_exp_t);
+            combine->type = 'T';
+            combine->cond = cond;
+            combine->left = if_exp;
+            combine->right = else_exp;
+            cond = combine;
+        }
+
+        return cond;
+    } else {
+        error("unreachable");
+    }
 }
 
 // END expression production rules

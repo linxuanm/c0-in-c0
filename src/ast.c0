@@ -32,6 +32,9 @@ struct ast_exp_t {
         - X: brackets (list indexing)
         - A: alloc
         - R: alloc array
+        - O: operator (binary)
+        - U: operator (unary)
+        - T: tenary operator
      */
     char type;
 
@@ -58,6 +61,15 @@ struct ast_exp_t {
 
     // `R`
     struct ast_exp_t *alloc_length;
+
+    // `T`
+    struct ast_exp_t *cond;
+
+    // `U`, `O`, `T`
+    struct ast_exp_t *left;
+
+    // `O`, `T`
+    struct ast_exp_t *right;
 };
 typedef struct ast_exp_t ast_exp_t;
 
