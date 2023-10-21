@@ -244,7 +244,16 @@ void pt_test_exp_basic() {
     assert(pt_is_exp(exp->alloc_length, 'F'));
     assert(exp->alloc_length->n_params == 1);
     assert(string_equal(exp->alloc_length->iden, "increment"));
-    assert(__p_is_eof(ctx));}
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("hello + foo * 3", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'O'));
+    assert(string_equal(exp->operator, "+"));
+    assert(pt_is_exp(exp->right, 'O'));
+    assert(string_equal(exp->right->operator, "*"));
+    assert(__p_is_eof(ctx));
+}
 
 void pt_test_parser() {
     pt_test_type_basic();

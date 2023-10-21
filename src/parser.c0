@@ -322,7 +322,7 @@ bool __p_fset_op(p_ctx_t *ctx, int n_ops, string[] ops)
 
     l_token_t *tok = __p_peek(ctx);
     for (int i = 0; i < n_ops; i++) {
-        if (__p_match(tok, 'S', ops[i])) return true;
+        if (__p_match(tok, 'O', ops[i])) return true;
     }
 
     return false;
@@ -513,7 +513,7 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
 //@requires __p_fset_exp(ctx);
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
-    return __p_parse_exp_atom(ctx);
+    return __p_parse_exp_by_level(ctx, 13);
 }
 
 // running `parse_tokens` and `num_tokens` each parse is reaaaaally slow but
@@ -532,7 +532,7 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
     if (exp == NULL) return NULL;
 
     while (__p_fset_op(ctx, n_ops, ops)) {
-        __p_next(ctx);
+        l_token_t *operator = __p_next(ctx);
         if (!__p_fset_exp(ctx)) {
             __p_set_err(ctx, "expecting expression after binary operator");
             return NULL;
@@ -543,6 +543,7 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
         
         ast_exp_t *combine = alloc(ast_exp_t);
         combine->type = 'O';
+        combine->operator = operator->str;
         combine->left = exp;
         combine->right = next;
         exp = combine;
@@ -561,11 +562,30 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
     if (level == 0) {
         return __p_parse_exp_atom(ctx);
     } else if (level == 1) {
-        // TODO: manually do `.` and `->`
+        // previously for `.` and `->`, but now moved to exp_atom suffix
         return __p_parse_exp_atom(ctx);
     } else if (level == 2) {
-        // TODO: parse prefix operators
-        return __p_parse_exp_atom(ctx);
+        int n_ops = 4;
+        string[] ops = parse_tokens("! - ~ *");
+
+        if (__p_fset_op(ctx, n_ops, ops)) {
+            l_token_t *prefix = __p_next(ctx);
+            if (!__p_fset_exp(ctx)) {
+                __p_set_err(ctx, "expecting expression after uary operator");
+                return NULL;
+            }
+
+            ast_exp_t *exp = alloc(ast_exp_t);
+            exp->type = 'U';
+            exp->operator = prefix->str;
+            // lazy right recusion hehe
+            exp->left = __p_parse_exp_by_level(ctx, level);
+
+            return exp;
+        } else {
+            return __p_parse_exp_by_level(ctx, level - 1);
+        }
+
     } else if (level == 3) {
         return __p_parse_exp_binop(ctx, "* / %", level);
     } else if (level == 4) {
@@ -589,7 +609,7 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
     } else if (level == 13) {
         ast_exp_t *cond = __p_parse_exp_by_level(ctx, level - 1);
 
-        if (__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'O', "?")) {
+        if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'O', "?")) {
             __p_next(ctx);
             if (!__p_fset_exp(ctx)) {
                 __p_set_err(ctx, "expecting expression after \"?\"");

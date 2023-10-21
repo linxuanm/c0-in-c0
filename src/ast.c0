@@ -65,6 +65,9 @@ struct ast_exp_t {
     // `T`
     struct ast_exp_t *cond;
 
+    // `U`, `O`
+    string operator;
+
     // `U`, `O`, `T`
     struct ast_exp_t *left;
 
