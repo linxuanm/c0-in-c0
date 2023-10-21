@@ -167,10 +167,23 @@ l_token_t *__p_next(p_ctx_t *ctx)
     return tok;
 }
 
+// if an identifier can be a variable OR function name
 bool __p_can_be_var(string var, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 {
-    return !om_has_s(ctx->types, var) && !om_has_s(ctx->funcs, var);
+    return !om_has_s(ctx->types, var);
+}
+
+bool __p_is_func_name(string name, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    return !om_has_s(ctx->types, name) && om_has_s(ctx->funcs, name);
+}
+
+bool __p_is_type_name(string name, p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    return om_has_s(ctx->types, name) && !om_has_s(ctx->funcs, name);
 }
 
 // END shorthands
@@ -200,7 +213,7 @@ bool __p_fset_type(p_ctx_t *ctx)
 
     // check type definitions for `struct <word>`
     if (tok->type == 'I') {
-        return om_has_s(ctx->types, word);
+        return __p_is_type_name(tok->str, ctx);
     }
 
     return false;
@@ -255,7 +268,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
     } else if (tok->type == 'I') {
         // sanity check: first-set of TYPE already ensured this
-        assert(om_has_s(ctx->types, tok->str));
+        assert(__p_is_type_name(tok->str, ctx));
 
         type->type = 'D';
         type->iden = tok->str;
@@ -303,6 +316,14 @@ bool __p_fset_exp(p_ctx_t *ctx)
     return false;
 }
 
+bool __p_fset_comma(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    return __p_match(__p_peek(ctx), 'S', ",");
+}
+
 // END fset for expressions
 
 // BEGIN expression production rules
@@ -335,6 +356,11 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
 
     // parenthesized expression
     if (__p_match(tok, 'S', "(")) {
+
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(ctx, "expecting expression");
+            return NULL;
+        }
 
         // yay alloc and immediate dealloc im very good at programming
         exp = __p_parse_exp(ctx);
@@ -374,13 +400,55 @@ ast_exp_t *__p_parse_exp0(p_ctx_t *ctx)
     // identifier
     } else if (tok->type == 'I') {
         string iden = tok->str;
-        if (!__p_can_be_var(iden, ctx)) {
-            error("unreachable code by first-set exclusion");
-        }
+
+        // sanity check: first-set exclusion
+        assert(__p_can_be_var(iden, ctx));
 
         if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'S', "(")) {
-            // TODO: func call parsing
-            error("func call parsing not implemented");
+            if (!__p_expect_sep("(", ctx)) return NULL;
+
+            exp->type = 'F';
+            if (!__p_is_func_name(iden, ctx)) {
+                string msg = format("function \"%s\" is undeclared", iden);
+                __p_set_err_at(ctx, msg, tok);
+                return NULL;
+            }
+
+            int CONST_MAX_PARAMS = 64;
+            exp->C_MAX_PARAMS = CONST_MAX_PARAMS;
+            exp->n_params = 0;
+            exp->params = alloc_array(ast_exp_t *, exp->C_MAX_PARAMS);
+
+            if (__p_fset_exp(ctx)) {
+                ast_exp_t *curr = __p_parse_exp(ctx);
+                if (curr == NULL) return NULL;
+                exp->params[exp->n_params] = curr;
+                exp->n_params++;
+
+                while (__p_fset_comma(ctx)) {
+                    if (!__p_expect_sep(",", ctx)) return NULL;
+                    if (!__p_fset_exp(ctx)) {
+                        __p_set_err(ctx, "expected expression after comma");
+                        return NULL;
+                    }
+
+                    curr = __p_parse_exp(ctx);
+                    if (curr == NULL) return NULL;
+
+                    if (exp->n_params == exp->C_MAX_PARAMS) {
+                        string fst = "hit the limit of parameters; ";
+                        string snd = "search and increase `CONST_MAX_PARAMS` ";
+                        string trd = "in `parser.c0`";
+                        error(format("%s%s%s", fst, snd, trd));
+                    }
+
+                    exp->params[exp->n_params] = curr;
+                    exp->n_params++;
+                }
+            }
+
+            if (!__p_expect_sep(")", ctx)) return NULL;
+
         } else {
             exp->type = 'D';
             exp->iden = iden;

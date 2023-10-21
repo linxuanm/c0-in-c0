@@ -45,6 +45,8 @@ struct ast_exp_t {
     string iden;
 
     // `F`
+    int C_MAX_PARAMS;
+    int n_params;
     struct ast_exp_t *[] params;
 
     // `B`
