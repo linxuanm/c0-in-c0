@@ -32,11 +32,7 @@
 
 struct re_state_t {
     bool is_term_state;
-    int[][] edges; // edges[ord][C_OUTGOING_LENGTH]
-    int[] n_edges; // n_edges[ord] = <number of resulting states>
-
-    // constant propagation
-    int C_OUTGOING_LENGTH;
+    vec_t *[] edges; // edges[ord]
 };
 typedef struct re_state_t re_state_t;
 
@@ -48,9 +44,6 @@ struct re_ctx_t {
 
     // true if doing lookahead; do not alter ctx
     bool is_test;
-
-    // constant propagation
-    int C_OUTGOING_LENGTH;
 };
 typedef struct re_ctx_t re_ctx_t;
 
@@ -81,28 +74,16 @@ int __re_new_state(re_ctx_t *ctx, bool is_term_state) {
     int state_id = ctx->n_states;
     re_state_t *state = alloc(re_state_t);
     state->is_term_state = is_term_state;
-    state->edges = alloc_array(int[], 129); // 128 for ASCII, 1 for epsilon
-    state->n_edges = alloc_array(int, 129);
-    state->C_OUTGOING_LENGTH = ctx->C_OUTGOING_LENGTH;
+    state->edges = alloc_array(vec_t *, 129); // 128 for ASCII, 1 for epsilon
+    for (int i = 0; i < 129; i++) {
+        state->edges[i] = v_create_vector();
+    }
 
     // record state into id -> state mapping
     ctx->states[state_id] = state;
     ctx->n_states++;
 
     return state_id;
-}
-
-void __re_lazy_init_transition(re_state_t *from_state, int chr) {
-    if (from_state->n_edges[chr] == 0) {
-        /*
-            The size here dictates how many out-going edges with the same
-            character can exist on a single state. 10 should suffice unless the
-            user is entering some crazy regex.
-        */
-        from_state->edges[chr] = alloc_array(
-            int, from_state->C_OUTGOING_LENGTH
-        );
-    }
 }
 
 /* re_ctx_t *re_dummy_ctx(re_ctx_t *real_ctx) {
@@ -158,25 +139,7 @@ void __re_add_transition(re_ctx_t *ctx, int from, int to, int index)
 //@requires index <= 128;
 {
     if (ctx->is_test) return;
-
-    re_state_t *from_state = ctx->states[from];
-    __re_lazy_init_transition(from_state, index);
-
-    //@assert from_state->C_OUTGOING_LENGTH == ctx->C_OUTGOING_LENGTH;
-    //@assert \length(from_state->edges[index]) == ctx->C_OUTGOING_LENGTH;
-
-    if (from_state->n_edges[index] == from_state->C_OUTGOING_LENGTH) {
-        string head = "Regex parameter error: ";
-        string fst = format(
-            "state %d hit the limit of %d outgoing edges; ",
-            from, from_state->C_OUTGOING_LENGTH
-        );
-        string snd = "search and increase `CONST_OUTGOING_LIMIT` in `regex.c0`";
-        error(format("%s%s%s", head, fst, snd));
-    }
-
-    from_state->edges[index][from_state->n_edges[index]] = to;
-    from_state->n_edges[index]++;
+    v_append(ctx->states[from]->edges[index], to);
 }
 
 void __re_add_epsilon(re_ctx_t *ctx, int from, int to) {
@@ -445,14 +408,11 @@ void __re_parse_or(re_ctx_t *ctx, int from, int to)
 }
 
 re_dfa_t *re_parse_regex(string regex) {
-    int CONST_OUTGOING_LIMIT = 16;
-
     re_ctx_t *ctx = alloc(re_ctx_t);
     ctx->n_states = 0;
     ctx->states = alloc_array(re_state_t *, 6969);
     ctx->pc = 0;
     ctx->regex = regex;
-    ctx->C_OUTGOING_LENGTH = CONST_OUTGOING_LIMIT;
     int start = __re_new_state(ctx, false);
     int end = __re_new_state(ctx, true);
 
@@ -488,7 +448,10 @@ void re_print_state(int id, re_dfa_t *dfa) {
     printf("State %d%s:", id, misc);
 
     int total_edges = 0;
-    for (int i = 0; i < 129; i++) total_edges += state->n_edges[i];
+    for (int i = 0; i < 129; i++) {
+        total_edges += v_length(state->edges[i]);
+    }
+
     if (total_edges == 0) {
         println("\t(No out-going transitions)");
     } else {
@@ -496,8 +459,8 @@ void re_print_state(int id, re_dfa_t *dfa) {
         bool[][] trans_bucket = alloc_array(bool[], dfa->n_states);
 
         for (int chr = 0; chr < 129; chr++) {
-            for (int e = 0; e < state->n_edges[chr]; e++) {
-                int to_state = state->edges[chr][e];
+            for (int e = 0; e < v_length(state->edges[chr]); e++) {
+                int to_state = v_get(state->edges[chr], e);
                 if (!state_bucket[to_state]) {
                     trans_bucket[to_state] = alloc_array(bool, 129);
                 }
@@ -543,8 +506,8 @@ int __re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx)
     re_state_t *state = re->states[id];
     int n_new_states = 0;
 
-    for (int i = 0; i < state->n_edges[128]; i++) {
-        int to = state->edges[128][i];
+    for (int i = 0; i < v_length(state->edges[128]); i++) {
+        int to = v_get(state->edges[128], i);
         if (!active[to]) {
             active[to] = true;
             n_new_states++;
@@ -599,8 +562,8 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
         // for all currently active states, perform its transformation
         for (int i = 0; i < re->n_states; i++) {
             if (ctx->active[i]) {
-                for (int e = 0; e < re->states[i]->n_edges[curr]; e++) {
-                    int to_state = re->states[i]->edges[curr][e];
+                for (int e = 0; e < v_length(re->states[i]->edges[curr]); e++) {
+                    int to_state = v_get(re->states[i]->edges[curr], e);
                     if (!new_states[to_state]) {
                         new_states[to_state] = true;
                         n_new_states++;

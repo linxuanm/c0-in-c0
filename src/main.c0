@@ -1,14 +1,12 @@
 #use <args>
 #use <conio>
 
-#use "file_io.c0"
-
 void compile_file(string path) {
     string res = f_read_file(path);
     println(res);
 }
 
-int main() {
+int _main() {
     args_t args = args_parse();
     if (args->argc == 0) {
         println("Usage: ccc0 [OPTION...] SOURCEFILE");
