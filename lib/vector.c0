@@ -1,0 +1,97 @@
+/*
+    A vector for integers.
+ */
+
+struct vec_t {
+    int len;
+    int limit;
+    int[] data;
+};
+typedef struct vec_t vec_t;
+
+// BEGIN contracts
+
+bool v_is_vector(vec_t *vec) {
+    return vec != NULL && vec->len >= 0
+        && vec->limit >= 0 && vec->len < vec->limit;
+}
+
+// END contracts
+
+// BEGIN constructor
+
+vec_t *v_create_vector()
+//@ensures v_is_vector(\result);
+{
+    vec_t *vec = alloc(vec_t);
+    vec->len = 0;
+    vec->limit = 16;
+    vec->data = alloc_array(int, vec->limit);
+
+    return vec;
+}
+
+// END constructor
+
+// BEGIN helpers
+
+void __v_resize(vec_t *vec)
+//@requires vec != NULL;
+//@requires vec->len >= 0 && vec->limit >= 0 && vec->len <= vec->limit;
+//@ensures v_is_vector(vec);
+{
+    if (vec->len == vec->limit) {
+        vec->limit <<= 1;
+        int[] new = alloc_array(int, vec->limit);
+        for (int i = 0; i < vec->len; i++) {
+            new[i] = vec->data[i];
+        }
+
+        vec->data = new;
+    }
+}
+
+// END helpers
+
+// BEGIN interface
+
+int v_length(vec_t *vec)
+//@requires v_is_vector(vec);
+//@ensures \result == vec->len;
+{
+    return vec->len;
+}
+
+int v_get(vec_t *vec, int i)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < vec->len;
+//@ensures \result == vec->data[i];
+{
+    return vec->data[i];
+}
+
+void v_set(vec_t *vec, int i, int v)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < v_length(vec);
+//@ensures v == vec->data[i];
+{
+    vec->data[i] = v;
+}
+
+void v_append(vec_t *vec, int v)
+//@requires v_is_vector(vec);
+{
+    vec->data[vec->len] = v;
+    vec->len++;
+    __v_resize(vec);
+}
+
+int v_remove(vec_t *vec)
+//@requires v_is_vector(vec);
+//@requires 0 < v_length(vec);
+{
+    vec->len--;
+    return vec->data[vec->len + 1];
+}
+
+// END interface
