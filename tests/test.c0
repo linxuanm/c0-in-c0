@@ -1,9 +1,8 @@
 int main() {
-    pt_test_parser();
+    //pt_test_parser();
 
-    //string code = f_read_file("samples/listlib.c0");
-    //compile(code);
-    //printf("%d\n", re_match_length("[ !#-~]*", "abc\"", 0));
+    string code = f_read_file("samples/listlib.c0");
+    compile(code);
     
     return 0;
 }

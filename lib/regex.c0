@@ -309,6 +309,8 @@ void __re_parse_atom(re_ctx_t *ctx, int from, int to)
             }
 
             ctx->pc++;
+        } else if (peek == '.') {
+            __re_char_bucket_invert(bucket);
         } else {
             bucket[char_ord(peek)] = true;
         }
@@ -445,7 +447,7 @@ void re_print_char(int ord) {
 void re_print_state(int id, re_dfa_t *dfa) {
     re_state_t *state = dfa->states[id];
     string misc = state->is_term_state ? " (FINISH)" : "";
-    printf("State %d%s:", id, misc);
+    printf("State %d%s:\n", id, misc);
 
     int total_edges = 0;
     for (int i = 0; i < 129; i++) {
@@ -527,13 +529,16 @@ int __re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx)
     index `begin_index`. Returns the length of the matched sequence starting
     from the given position.
 
+    If `match_least` is true then this function will try to match as little as
+    possible.
+
     Example:
         re = "a(b|c)d"
         input = "acdef"
         begin_index = 0
         This returns 3 as the DFA only matches the prefix "acd".
 */
-int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
+int re_run_dfa(re_dfa_t *re, string input, int begin_index, bool match_least) {
     re_match_ctx_t *ctx = alloc(re_match_ctx_t);
 
     ctx->active = alloc_array(bool, re->n_states);
@@ -554,6 +559,16 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
         ctx->pc + begin_index < string_length(ctx->input) && ctx->n_active != 0;
         ctx->pc++
     ) {
+
+        // really dumb "match shortest string"
+        if (match_least) {
+            for (int i = 0; i < re->n_states; i++) {
+                if (ctx->active[i] && re->states[i]->is_term_state) {
+                    return ctx->pc;
+                }
+            }
+        }
+
         int n_new_states = 0;
         bool[] new_states = alloc_array(bool, re->n_states);
 
@@ -593,15 +608,17 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index) {
 bool re_match_string(string regex, string input) {
     re_dfa_t *re = re_parse_regex(regex);
     if (re == NULL) return false; // regex error; see stdout for error message
-    return re_run_dfa(re, input, 0) == string_length(input);
+    return re_run_dfa(re, input, 0, false) == string_length(input);
 }
 
 /*
     Returns the length of the substring (starting from the given `begin_index`)
     in the given input that matches the given regex.
 */
-int re_match_length(string regex, string input, int begin_index) {
+int re_match_length(
+    string regex, string input, int begin_index, bool match_least
+) {
     re_dfa_t *re = re_parse_regex(regex);
     if (re == NULL) return -1; // regex error; see stdout for error message
-    return re_run_dfa(re, input, begin_index);
+    return re_run_dfa(re, input, begin_index, match_least);
 }

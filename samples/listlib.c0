@@ -1,4 +1,8 @@
-// this is a comment
+/*
+ * Utility functions for NULL-terminated sorted lists
+ *
+ * 15-122 Principles of Imperative Computation
+ */
 
 typedef struct list_node list;
 struct list_node {
@@ -11,20 +15,38 @@ struct sortedlist_header {
   list* start;
 };
 
-bool is_segment(list* start, list* end);
-bool no_circularity(sortedlist* L);
-bool is_sortedlist(sortedlist* L);
-sortedlist* array_to_linkedlist(int[] A, int n);
-int list_length(sortedlist* L);
-int[] linkedlist_to_array(sortedlist* L);
-bool arr_eq(int[] A, int[] B, int n);
 
+bool is_segment(list* start, list* end);
+
+bool no_circularity(sortedlist* L);
+
+bool is_sortedlist(sortedlist* L);
+
+sortedlist* array_to_linkedlist(int[] A, int n)
+/*@requires 0 <= n && n <= \length(A); @*/ ;
+
+int list_length(sortedlist* L)
+/*@requires L != NULL && no_circularity(L); @*/ ;
+
+int[] linkedlist_to_array(sortedlist* L)
+/*@requires L != NULL && no_circularity(L);    @*/
+/*@ensures list_length(L) == \length(\result); @*/ ;
+
+bool arr_eq(int[] A, int[] B, int n)
+/*@requires 0 <= n && n <= \length(A) && n <= \length(B); @*/ ;
+
+
+
+/*********** YOU DO NOT NEED TO READ ANYTHING BELOW THIS LINE ***********/
+
+/* Checks if a given sortedlist is valid */
 bool is_sortedlist(sortedlist* L) {
   if (L == NULL) return false;
   if (!no_circularity(L)) return false;
 
+  //check for sortedness
   list* cur = L->start;
-  if (cur == NULL) return true;
+  if (cur == NULL) return true; //empty list is sorted
 
   int prev_elem = cur->data;
   while (cur->next != NULL) {
@@ -45,8 +67,10 @@ bool is_segment(list* start, list* end) {
   return true;
 }
 
-bool no_circularity(sortedlist* L) {
-  if (L->start == NULL) return true;
+bool no_circularity(sortedlist* L)
+//@requires L != NULL;
+{
+  if (L->start == NULL) return true; //if the list is empty, it's not circular
   list* tortoise = L->start;
   list* hare = L->start->next;
   while (tortoise != NULL && hare != NULL) {
@@ -58,7 +82,9 @@ bool no_circularity(sortedlist* L) {
   return true;
 }
 
-sortedlist* array_to_linkedlist(int[] A, int n) {
+sortedlist* array_to_linkedlist(int[] A, int n)
+//@requires 0 <= n && n <= \length(A);
+{
   sortedlist* ret = alloc(sortedlist);
   if (n > 0) {
     list* curr = alloc(list);
@@ -74,7 +100,9 @@ sortedlist* array_to_linkedlist(int[] A, int n) {
   return ret;
 }
 
-int list_length(sortedlist* L) {
+int list_length(sortedlist* L)
+//@requires L != NULL && no_circularity(L);
+{
   int len = 0;
   list* curr = L->start;
   while (curr != NULL) {
@@ -84,7 +112,10 @@ int list_length(sortedlist* L) {
   return len;
 }
 
-int[] linkedlist_to_array(sortedlist* L) {
+int[] linkedlist_to_array(sortedlist* L)
+//@requires L != NULL && no_circularity(L);
+//@ensures list_length(L) == \length(\result);
+{
   int len = list_length(L);
   int[] ret = alloc_array(int, len);
   list *curr = L->start;
@@ -95,11 +126,11 @@ int[] linkedlist_to_array(sortedlist* L) {
   return ret;
 }
 
-bool arr_eq(int[] A, int[] B, int n) {
+bool arr_eq(int[] A, int[] B, int n)
+//@requires 0 <= n && n <= \length(A) && n <= \length(B);
+{
   for (int i = 0; i < n; i++) {
     if (A[i] != B[i]) return false;
   }
   return true;
 }
-
-// this is a trailing comment

@@ -56,7 +56,7 @@ int l_tokenize(string code, l_token_t *[] tokens) {
     re_dfa_t *R_ASN_OP = re_parse_regex(
         "=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
     );
-    re_dfa_t *R_WHITE = re_parse_regex("(\\s+)|(//[^\n]*\n)");
+    re_dfa_t *R_WHITE = re_parse_regex("(\\s+)|(//[^\n]*\n)|(/\\*.*\\*/)");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
     re_dfa_t *R_OPERATOR = re_parse_regex(R_OP);
 
@@ -87,7 +87,9 @@ int l_tokenize(string code, l_token_t *[] tokens) {
         char token_type = '\0';
 
         for (int i = 0; i < n_token_types && token_size == 0; i++) {
-            token_size = re_run_dfa(regexs[i], code, src_ptr);
+            token_size = re_run_dfa(
+                regexs[i], code, src_ptr, token_types[i] == 'W'
+            );
             if (token_size != 0) {
                 token_type = token_types[i];
             }
