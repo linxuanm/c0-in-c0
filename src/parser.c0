@@ -675,6 +675,17 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 
 // END expression production rules
 
+// BEGIN fset for statements
+
+bool __p_fset_simp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    // TODO: do this
+    return __p_fset_exp(ctx) || __p_fset_type(ctx);
+}
+
+// END fset for statements
+
 // BEGIN parsing stage
 
 ast_program_t *p_parse_tokens(int n_tokens, l_token_t *[] tokens)
