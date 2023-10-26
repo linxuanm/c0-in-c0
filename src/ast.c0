@@ -35,10 +35,12 @@ struct ast_exp_t {
         - O: operator (binary)
         - U: operator (unary)
         - T: tenary operator
+        - M: member (struct field access)
+        - P: arrow (pointer field access)
      */
     char type;
 
-    // `I`, `C`, `S`
+    // `I`, `C`, `S`, `B`
     int lit_int;
     char lit_chr;
     string lit_str;
@@ -52,10 +54,6 @@ struct ast_exp_t {
     int n_params;
     struct ast_exp_t *[] params;
 
-    // `B`
-    struct ast_exp_t *list;
-    struct ast_exp_t *index;
-
     // `A`, `R`
     ast_type_t *alloc_type;
 
@@ -68,11 +66,14 @@ struct ast_exp_t {
     // `U`, `O`
     string operator;
 
-    // `U`, `O`, `T`
+    // `U`, `O`, `T`, `X`, `M`, `P`
     struct ast_exp_t *left;
 
-    // `O`, `T`
+    // `O`, `T`, `X`
     struct ast_exp_t *right;
+
+    // `M`, `P`
+    string attr;
 };
 typedef struct ast_exp_t ast_exp_t;
 

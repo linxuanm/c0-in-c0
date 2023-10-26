@@ -328,6 +328,17 @@ bool __p_fset_op(p_ctx_t *ctx, int n_ops, string[] ops)
     return false;
 }
 
+bool __p_fset_suffix(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    return __p_match(tok, 'S', "[")
+        || __p_match(tok, 'O', "->")
+        || __p_match(tok, 'O', ".");
+}
+
 // END fset for expressions
 
 // BEGIN expression production rules
@@ -340,21 +351,6 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
 // operator precedence
 ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level);
 ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level);
-/*
-ast_exp_t *__p_parse_exp1(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp2(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp3(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp4(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp5(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp6(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp7(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp8(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp9(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp10(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp11(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp12(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp13(p_ctx_t *ctx);
-*/
 
 ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
@@ -502,7 +498,46 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         error("unreachable by first-set exclusion");
     }
 
-    // TODO: bracket suffix check
+    while (__p_fset_suffix(ctx)) {
+        l_token_t *suf = __p_next(ctx);
+        if (__p_match(suf, 'S', "[")) {
+            if (!__p_fset_exp(ctx)) {
+                __p_set_err(ctx, "expecting expression in index bracket");
+                return NULL;
+            }
+
+            ast_exp_t *idx = __p_parse_exp(ctx);
+            if (idx == NULL) return NULL;
+            if (__p_expect_sep("]", ctx)) return NULL;
+
+            ast_exp_t *idx_exp = alloc(ast_exp_t);
+            idx_exp->type = 'X';
+            idx_exp->left = exp;
+            idx_exp->right = idx_exp;
+            exp = idx_exp;
+
+        } else if (__p_match(suf, 'O', "->") || __p_match(suf, 'O', ".")) {
+            if (__p_is_eof(ctx)) {
+                __p_eof_err(ctx);
+                return NULL;
+            }
+
+            l_token_t *name = __p_next(ctx);
+            if (name->type != 'I') {
+                __p_set_err_at(ctx, "expecting identifier (field name)", name);
+                return NULL;
+            }
+
+            ast_exp_t *attr_exp = alloc(ast_exp_t);
+            attr_exp->type = __p_match(suf, 'O', ".") ? 'M' : 'P';
+            attr_exp->left = exp;
+            attr_exp->attr = name->str;
+            exp = attr_exp;
+            
+        } else {
+            error("unreachable by first-set exclusion");
+        }
+    }
 
     return exp;
 }

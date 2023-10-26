@@ -253,6 +253,20 @@ void pt_test_exp_basic() {
     assert(pt_is_exp(exp->right, 'O'));
     assert(string_equal(exp->right->operator, "*"));
     assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("hello.abc + foo->yay->baz * 3", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'O'));
+    assert(string_equal(exp->operator, "+"));
+    assert(pt_is_exp(exp->right, 'O'));
+    assert(string_equal(exp->right->operator, "*"));
+    assert(pt_is_exp(exp->left, 'M'));
+    assert(string_equal(exp->left->attr, "abc"));
+    assert(pt_is_exp(exp->right->left, 'P'));
+    assert(string_equal(exp->right->left->attr, "baz"));
+    assert(pt_is_exp(exp->right->left->left, 'P'));
+    assert(string_equal(exp->right->left->left->attr, "yay"));
+    assert(__p_is_eof(ctx));
 }
 
 void pt_test_parser() {
