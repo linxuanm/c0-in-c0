@@ -1,11 +1,14 @@
+#use <conio>
+
 /*
     A vector for integers.
  */
 
+
 struct vec_t {
     int len;
     int limit;
-    int[] data;
+    void *[] data;
 };
 typedef struct vec_t vec_t;
 
@@ -26,7 +29,7 @@ vec_t *v_create_vector()
     vec_t *vec = alloc(vec_t);
     vec->len = 0;
     vec->limit = 16;
-    vec->data = alloc_array(int, vec->limit);
+    vec->data = alloc_array(void *, vec->limit);
 
     return vec;
 }
@@ -42,7 +45,7 @@ void __v_resize(vec_t *vec)
 {
     if (vec->len == vec->limit) {
         vec->limit <<= 1;
-        int[] new = alloc_array(int, vec->limit);
+        void *[] new = alloc_array(void *, vec->limit);
         for (int i = 0; i < vec->len; i++) {
             new[i] = vec->data[i];
         }
@@ -62,7 +65,7 @@ int v_length(vec_t *vec)
     return vec->len;
 }
 
-int v_get(vec_t *vec, int i)
+void *v_get(vec_t *vec, int i)
 //@requires v_is_vector(vec);
 //@requires 0 <= i && i < vec->len;
 //@ensures \result == vec->data[i];
@@ -70,7 +73,7 @@ int v_get(vec_t *vec, int i)
     return vec->data[i];
 }
 
-void v_set(vec_t *vec, int i, int v)
+void v_set(vec_t *vec, int i, void *v)
 //@requires v_is_vector(vec);
 //@requires 0 <= i && i < v_length(vec);
 //@ensures v == vec->data[i];
@@ -78,7 +81,7 @@ void v_set(vec_t *vec, int i, int v)
     vec->data[i] = v;
 }
 
-void v_append(vec_t *vec, int v)
+void v_append(vec_t *vec, void *v)
 //@requires v_is_vector(vec);
 {
     vec->data[vec->len] = v;
@@ -86,7 +89,7 @@ void v_append(vec_t *vec, int v)
     __v_resize(vec);
 }
 
-int v_remove(vec_t *vec)
+void *v_remove_last(vec_t *vec)
 //@requires v_is_vector(vec);
 //@requires 0 < v_length(vec);
 {
@@ -95,3 +98,41 @@ int v_remove(vec_t *vec)
 }
 
 // END interface
+
+// BEGIN shorthands
+
+int v_get_int(vec_t *vec, int i)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < vec->len;
+//@ensures \result == * (int *) vec->data[i];
+{
+    return * (int *) v_get(vec, i);
+}
+
+void v_set_int(vec_t *vec, int i, int v)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < v_length(vec);
+//@ensures v == * (int *) vec->data[i];
+{
+    int *v_ptr = alloc(int);
+    *v_ptr = v;
+    vec->data[i] = (void *) v_ptr;
+}
+
+void v_append_int(vec_t *vec, int v)
+//@requires v_is_vector(vec);
+{
+    int *v_ptr = alloc(int);
+    *v_ptr = v;
+    vec->data[vec->len] = (void *) v_ptr;
+    vec->len++;
+    __v_resize(vec);
+}
+
+int v_remove_last_int(vec_t *vec)
+//@requires v_is_vector(vec);
+//@requires 0 < v_length(vec);
+{
+    vec->len--;
+    return * (int *) vec->data[vec->len + 1];
+}

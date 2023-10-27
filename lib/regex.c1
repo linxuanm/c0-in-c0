@@ -39,8 +39,7 @@ typedef struct re_state_t re_state_t;
 struct re_ctx_t {
     int pc;
     string regex;
-    int n_states;
-    re_state_t *[] states;
+    vec_t *states;
 
     // true if doing lookahead; do not alter ctx
     bool is_test;
@@ -71,7 +70,7 @@ void __re_parse_class(re_ctx_t *ctx, int from, int to);
 int __re_new_state(re_ctx_t *ctx, bool is_term_state) {
     if (ctx->is_test) return -1;
 
-    int state_id = ctx->n_states;
+    int state_id = v_length(ctx->states);
     re_state_t *state = alloc(re_state_t);
     state->is_term_state = is_term_state;
     state->edges = alloc_array(vec_t *, 129); // 128 for ASCII, 1 for epsilon
@@ -80,8 +79,7 @@ int __re_new_state(re_ctx_t *ctx, bool is_term_state) {
     }
 
     // record state into id -> state mapping
-    ctx->states[state_id] = state;
-    ctx->n_states++;
+    v_append(ctx->states, (void *) state);
 
     return state_id;
 }
@@ -139,7 +137,7 @@ void __re_add_transition(re_ctx_t *ctx, int from, int to, int index)
 //@requires index <= 128;
 {
     if (ctx->is_test) return;
-    v_append(ctx->states[from]->edges[index], to);
+    v_append_int(((re_state_t *) v_get(ctx->states, from))->edges[index], to);
 }
 
 void __re_add_epsilon(re_ctx_t *ctx, int from, int to) {
@@ -411,8 +409,7 @@ void __re_parse_or(re_ctx_t *ctx, int from, int to)
 
 re_dfa_t *re_parse_regex(string regex) {
     re_ctx_t *ctx = alloc(re_ctx_t);
-    ctx->n_states = 0;
-    ctx->states = alloc_array(re_state_t *, 6969);
+    ctx->states = v_create_vector();
     ctx->pc = 0;
     ctx->regex = regex;
     int start = __re_new_state(ctx, false);
@@ -425,8 +422,11 @@ re_dfa_t *re_parse_regex(string regex) {
     }
 
     re_dfa_t *dfa = alloc(re_dfa_t);
-    dfa->n_states = ctx->n_states;
-    dfa->states = ctx->states;
+    dfa->n_states = v_length(ctx->states);
+    dfa->states = alloc_array(re_state_t *, dfa->n_states);
+    for (int i = 0; i < dfa->n_states; i++) {
+        dfa->states[i] = (re_state_t *) v_get(ctx->states, i);
+    }
 
     return dfa;
 }
@@ -462,7 +462,7 @@ void re_print_state(int id, re_dfa_t *dfa) {
 
         for (int chr = 0; chr < 129; chr++) {
             for (int e = 0; e < v_length(state->edges[chr]); e++) {
-                int to_state = v_get(state->edges[chr], e);
+                int to_state = v_get_int(state->edges[chr], e);
                 if (!state_bucket[to_state]) {
                     trans_bucket[to_state] = alloc_array(bool, 129);
                 }
@@ -509,7 +509,7 @@ int __re_prop_epsilon(int id, re_dfa_t *re, bool[] active, re_match_ctx_t *ctx)
     int n_new_states = 0;
 
     for (int i = 0; i < v_length(state->edges[128]); i++) {
-        int to = v_get(state->edges[128], i);
+        int to = v_get_int(state->edges[128], i);
         if (!active[to]) {
             active[to] = true;
             n_new_states++;
@@ -578,7 +578,7 @@ int re_run_dfa(re_dfa_t *re, string input, int begin_index, bool match_least) {
         for (int i = 0; i < re->n_states; i++) {
             if (ctx->active[i]) {
                 for (int e = 0; e < v_length(re->states[i]->edges[curr]); e++) {
-                    int to_state = v_get(re->states[i]->edges[curr], e);
+                    int to_state = v_get_int(re->states[i]->edges[curr], e);
                     if (!new_states[to_state]) {
                         new_states[to_state] = true;
                         n_new_states++;
@@ -621,4 +621,26 @@ int re_match_length(
     re_dfa_t *re = re_parse_regex(regex);
     if (re == NULL) return -1; // regex error; see stdout for error message
     return re_run_dfa(re, input, begin_index, match_least);
+}
+
+int main() {
+    //@assert re_match_string("a|ac|dc", "a");
+    //@assert !re_match_string("a|ac|dc", "d");
+
+    //@assert re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "sCoTtY_dOg");
+    //@assert re_match_string("\\s*[a-zA-Z_][a-zA-Z0-9_]*", "   \tsCoTtY_dOg");
+    //@assert !re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "1SCOTTY");
+
+    //@assert re_match_string("abcdef|(gh)+ijkl", "abcdef");
+    //@assert re_match_string("abcdef|(gh)+ijkl", "ghghghghghijkl");
+    //@assert re_match_string("(a1(cd|ef|gh))", "a1cd");
+    //@assert re_match_string("aa|ab|ac|ad|ae|af", "af");
+    //@assert !re_match_string("abcdef|ghijkl", "abdef");
+
+    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3, false) == 8;
+    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3, true) == 1;
+
+    printf("%d\n", re_match_length("/\\*.*\\*/", "/*/*a\n\tAY&*/", 0, true));
+
+    return 0;
 }
