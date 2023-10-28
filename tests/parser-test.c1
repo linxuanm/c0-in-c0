@@ -8,6 +8,10 @@ bool pt_is_exp(ast_exp_t *exp, char expected) {
     return exp != NULL && exp->type == expected;
 }
 
+bool pt_is_stmt(ast_stmt_t *stmt, char expected) {
+    return stmt != NULL && stmt->type == expected;
+}
+
 p_ctx_t *pt_make_ctx(string code, string type_names) {
     l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
     int n_tokens = l_tokenize(code, tokens);
@@ -269,9 +273,58 @@ void pt_test_exp_basic() {
     assert(__p_is_eof(ctx));
 }
 
+void pt_test_simp_basic() {
+    ast_stmt_t *stmt;
+    p_ctx_t *ctx;
+
+    // basic simps
+    ctx = pt_make_ctx("hello = 123 + a[4]", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'A'));
+    assert(stmt->lv->type == 'D');
+    assert(string_equal(stmt->lv->iden, "hello"));
+    assert(pt_is_exp(stmt->rv, 'O'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("struct list hello = 123 + 4", "$list");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'D'));
+    assert(pt_is_type(stmt->decl_type, 'X'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("foo[4] = 123 + 4", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'A'));
+    assert(__p_is_eof(ctx));
+    
+    ctx = pt_make_ctx("123 = -69", "");
+    stmt = __p_parse_simp(ctx);
+    assert(stmt == NULL);
+    //printf("Line %d, Col %d: %s\n", ctx->err_row, ctx->err_col, ctx->err_msg);
+
+    ctx = pt_make_ctx("foo(hello)", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'E'));
+    assert(pt_is_exp(stmt->rv, 'F'));
+    assert(string_equal(stmt->rv->iden, "foo"));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("error(hello)", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'O'));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("assert(123)", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'S'));
+    assert(__p_is_eof(ctx));
+}
+
 void pt_test_parser() {
     pt_test_type_basic();
     pt_test_type_suffix();
 
     pt_test_exp_basic();
+
+    pt_test_simp_basic();
 }

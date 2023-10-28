@@ -303,6 +303,7 @@ bool __p_fset_exp(p_ctx_t *ctx)
     if (tok->type == 'I' && __p_can_be_var(tok->str, ctx)) return true;
     if (__p_match(tok, 'K', "alloc")) return true;
     if (__p_match(tok, 'K', "alloc_array")) return true;
+    if (tok->type == 'O' && u_is_unary(tok->str)) return true;
 
     return false;
 }
@@ -496,7 +497,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 
             ast_exp_t *idx = __p_parse_exp(ctx);
             if (idx == NULL) return NULL;
-            if (__p_expect_sep("]", ctx)) return NULL;
+            if (!__p_expect_sep("]", ctx)) return NULL;
 
             ast_exp_t *idx_exp = alloc(ast_exp_t);
             idx_exp->type = 'X';
@@ -526,7 +527,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             error("unreachable by first-set exclusion");
         }
     }
-
+    
     return exp;
 }
 
@@ -668,28 +669,46 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 bool __p_fset_simp(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 {
-    // TODO: do this
-    return __p_fset_exp(ctx) || __p_fset_type(ctx);
+    if (__p_fset_exp(ctx) || __p_fset_type(ctx)) return true;
+
+    l_token_t *peek = __p_peek(ctx);
+    return __p_match(peek, 'K', "error")
+        || __p_match(peek, 'K', "assert");
+}
+
+bool __p_fset_stmt(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+    if (__p_fset_simp(ctx)) return true;
+
+    // exclude `assert` and `error` and treat them as normal functions
+    l_token_t *peek = __p_peek(ctx);
+    return __p_match(peek, 'S', "{")
+        || __p_match(peek, 'K', "if")
+        || __p_match(peek, 'K', "while")
+        || __p_match(peek, 'K', "for")
+        || __p_match(peek, 'K', "return");
 }
 
 // END fset for statements
 
-bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp)
+bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp, l_token_t *tok)
 //@requires exp != NULL;
 {
     bool is_lv = false;
     if (exp->type == 'D' || exp->type == 'M' || exp->type == 'P') is_lv = true;
     
     if (exp->type == 'U' && string_equal(exp->operator, "*")) {
-        is_lv = __p_assert_left_value(ctx, exp->left);
+        is_lv = __p_assert_left_value(ctx, exp->left, tok);
     }
 
     if (exp->type == 'X') {
-        is_lv = __p_assert_left_value(ctx, exp->left);
+        is_lv = __p_assert_left_value(ctx, exp->left, tok);
     }
 
     if (!is_lv) {
-        __p_set_err(ctx, "LHS of assignment must be a left value");
+        __p_set_err_at(ctx, "LHS of assignment must be a left value", tok);
     }
 
     return is_lv;
@@ -721,9 +740,9 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
                 stmt->lv = fv;
                 stmt->rv = NULL;
 
-                if (!__p_assert_left_value(ctx, stmt->lv)) return NULL;
+                if (!__p_assert_left_value(ctx, stmt->lv, peek)) return NULL;
 
-            } else if (peek->type == 'O' && u_is_asn_op(peek->str)) {
+            } else if (peek->type == 'A') {
                 __p_next(ctx);
 
                 if (!__p_fset_exp(ctx)) {
@@ -738,13 +757,58 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
                 stmt->lv = fv;
                 stmt->rv = rhs;
 
-                if (!__p_assert_left_value(ctx, stmt->lv)) return NULL;
+                if (!__p_assert_left_value(ctx, stmt->lv, peek)) return NULL;
             }
         }
 
     } else if (__p_fset_type(ctx)) {
 
-        // TODO
+        ast_type_t *decl_type = __p_parse_type(ctx);
+        if (decl_type == NULL) return NULL;
+
+        if (__p_is_eof(ctx)) {
+            __p_eof_err(ctx);
+            return NULL;
+        }
+
+        l_token_t *id_tok = __p_next(ctx);
+        if (id_tok->type != 'I' || !__p_can_be_var(id_tok->str, ctx)) {
+            __p_set_err_at(ctx, "expecting identifier in declaration", id_tok);
+        }
+
+        stmt->type = 'D';
+        stmt->decl_type = decl_type;
+        stmt->decl_iden = id_tok->str;
+
+        if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'A', "=")) {
+            __p_next(ctx);
+            if (!__p_fset_exp(ctx)) {
+                __p_set_err(ctx, "expecting expression at assignment");
+                return NULL;
+            }
+
+            ast_exp_t *rhs = __p_parse_exp(ctx);
+            if (rhs == NULL) return NULL;
+            stmt->rv = rhs;
+        }
+
+    } else if (
+        __p_match(__p_peek(ctx), 'K', "assert") ||
+        __p_match(__p_peek(ctx), 'K', "error")
+    ) {
+        l_token_t *kw_func = __p_next(ctx);
+        stmt->type = string_equal(kw_func->str, "assert") ? 'S' : 'O';
+        if (!__p_expect_sep("(", ctx)) return NULL;
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(
+                ctx, format("expecting expression in %s", kw_func->str)
+            );
+            return NULL;
+        }
+
+        stmt->rv = __p_parse_exp(ctx);
+        if (stmt->rv == NULL) return NULL;
+        if (!__p_expect_sep(")", ctx)) return NULL;
 
     } else {
         error("unreachable by first-set exclusion");

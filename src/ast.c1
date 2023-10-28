@@ -100,7 +100,7 @@ struct ast_stmt_t {
     // `A`, `P`
     ast_exp_t *lv;
 
-    // `A`, `E`, `R`, `S`
+    // `A`, `E`, `R`, `S`, `D`, `O`
     ast_exp_t *rv;
 
     string asn_op;
@@ -120,9 +120,6 @@ struct ast_stmt_t {
 
     // `I`
     ast_block_t *blk_b;
-
-    // `O`
-    string err_msg;
 };
 typedef struct ast_stmt_t ast_stmt_t;
 

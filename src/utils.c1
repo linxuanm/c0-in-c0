@@ -15,13 +15,8 @@ bool u_is_keyword(string word) {
         || string_equal(word, "continue")
         || string_equal(word, "break")
         || string_equal(word, "return")
-
-        // treat `assert` as normal function as all params are EXP
-        // || string_equal(word, "assert")
-
-        // treat `error` as normal function as all params are EXP
-        // || string_equal(word, "error")
-
+        || string_equal(word, "assert")
+        || string_equal(word, "error")
         || string_equal(word, "alloc")
         || string_equal(word, "alloc_array");
 }
@@ -30,6 +25,13 @@ bool u_is_literal(string word) {
     return string_equal(word, "true")
         || string_equal(word, "false")
         || string_equal(word, "NULL");
+}
+
+bool u_is_unary(string word) {
+    return string_equal(word, "!")
+        || string_equal(word, "~")
+        || string_equal(word, "-")
+        || string_equal(word, "*");
 }
 
 bool u_is_token_type(char type) {
@@ -45,19 +47,19 @@ bool u_is_native_type(string word) {
         || string_equal(word, "void");
 }
 
-bool u_is_asn_op(string word) {
-    return string_equal(word, "=")
-        || string_equal(word, "+=")
-        || string_equal(word, "-=")
-        || string_equal(word, "*=")
-        || string_equal(word, "/=")
-        || string_equal(word, "%=")
-        || string_equal(word, "<<=")
-        || string_equal(word, ">>=")
-        || string_equal(word, "&=")
-        || string_equal(word, "^=")
-        || string_equal(word, "|=");
-}
+// bool u_is_asn_op(string word) {
+//     return string_equal(word, "=")
+//         || string_equal(word, "+=")
+//         || string_equal(word, "-=")
+//         || string_equal(word, "*=")
+//         || string_equal(word, "/=")
+//         || string_equal(word, "%=")
+//         || string_equal(word, "<<=")
+//         || string_equal(word, ">>=")
+//         || string_equal(word, "&=")
+//         || string_equal(word, "^=")
+//         || string_equal(word, "|=");
+// }
 
 string u_tok_type_to_readable(char type)
 //@requires u_is_token_type(type);
