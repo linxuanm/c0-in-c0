@@ -18,7 +18,7 @@ p_ctx_t *pt_make_ctx(string code, string type_names) {
     int n_types = num_tokens(type_names);
     string[] types = parse_tokens(type_names);
     for (int i = 0; i < n_types; i++) {
-        om_insert_s(ctx->types, types[i], 0);
+        om_insert_si(ctx->types, types[i], 0);
     }
 
     return ctx;

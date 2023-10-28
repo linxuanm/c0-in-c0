@@ -1,0 +1,8 @@
+int main() {
+    pt_test_parser();
+
+    // string code = f_read_file("samples/listlib.c0");
+    // compile(code);
+    
+    return 0;
+}

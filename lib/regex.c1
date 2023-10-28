@@ -622,25 +622,3 @@ int re_match_length(
     if (re == NULL) return -1; // regex error; see stdout for error message
     return re_run_dfa(re, input, begin_index, match_least);
 }
-
-int main() {
-    //@assert re_match_string("a|ac|dc", "a");
-    //@assert !re_match_string("a|ac|dc", "d");
-
-    //@assert re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "sCoTtY_dOg");
-    //@assert re_match_string("\\s*[a-zA-Z_][a-zA-Z0-9_]*", "   \tsCoTtY_dOg");
-    //@assert !re_match_string("[a-zA-Z_][a-zA-Z0-9_]*", "1SCOTTY");
-
-    //@assert re_match_string("abcdef|(gh)+ijkl", "abcdef");
-    //@assert re_match_string("abcdef|(gh)+ijkl", "ghghghghghijkl");
-    //@assert re_match_string("(a1(cd|ef|gh))", "a1cd");
-    //@assert re_match_string("aa|ab|ac|ad|ae|af", "af");
-    //@assert !re_match_string("abcdef|ghijkl", "abdef");
-
-    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3, false) == 8;
-    //@assert re_match_length("[a-z]+", "%&*carnegie72", 3, true) == 1;
-
-    printf("%d\n", re_match_length("/\\*.*\\*/", "/*/*a\n\tAY&*/", 0, true));
-
-    return 0;
-}

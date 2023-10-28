@@ -1,3 +1,3 @@
 Compile this project with the following command:
 
-% cc0 lib/vector.c0 lib/regex.c0 lib/ordered_map.c0 src/utils.c0 src/file_io.c0 src/lexer.c0 src/ast.c0 src/parser.c0 src/compile.c0 tests/parser-test.c0 tests/test.c0 src/main.c0
+% cc0 lib/vector.c1 lib/regex.c1 lib/ordered_map.c1 src/utils.c1 src/file_io.c1 src/lexer.c1 src/ast.c1 src/parser.c1 src/compile.c1 tests/parser-test.c1 tests/test.c1 src/main.c1
