@@ -50,9 +50,7 @@ struct ast_exp_t {
     string iden;
 
     // `F`
-    int C_MAX_PARAMS;
-    int n_params;
-    struct ast_exp_t *[] params;
+    vec_t *params;
 
     // `A`, `R`
     ast_type_t *alloc_type;
@@ -77,8 +75,54 @@ struct ast_exp_t {
 };
 typedef struct ast_exp_t ast_exp_t;
 
-struct ast_stmt_t {
+typedef vec_t ast_block_t;
 
+// flattens the <simple> and <stmt> grammar
+struct ast_stmt_t {
+    /*
+        <simp>:
+        - A: assign
+        - P: postfix `++` `--`
+        - E: expression
+        - D: declaration
+
+        <stmt>:
+        - I: if
+        - W: while
+        - F: for
+        - R: return
+        - B: block
+        - S: assert
+        - O: error
+     */
+    char type;
+
+    // `A`, `P`
+    ast_exp_t *lv;
+
+    // `A`, `E`, `R`, `S`
+    ast_exp_t *rv;
+
+    string asn_op;
+
+    // `P`
+    string suffix_op;
+
+    // `D`
+    ast_type_t *decl_type;
+    string decl_iden;
+
+    // `I`, `W`, `F`
+    ast_exp_t *cond;
+
+    // `I`, `B`, `W`, `F`
+    ast_block_t *blk_a;
+
+    // `I`
+    ast_block_t *blk_b;
+
+    // `O`
+    string err_msg;
 };
 typedef struct ast_stmt_t ast_stmt_t;
 

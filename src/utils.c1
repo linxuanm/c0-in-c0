@@ -45,6 +45,20 @@ bool u_is_native_type(string word) {
         || string_equal(word, "void");
 }
 
+bool u_is_asn_op(string word) {
+    return string_equal(word, "=")
+        || string_equal(word, "+=")
+        || string_equal(word, "-=")
+        || string_equal(word, "*=")
+        || string_equal(word, "/=")
+        || string_equal(word, "%=")
+        || string_equal(word, "<<=")
+        || string_equal(word, ">>=")
+        || string_equal(word, "&=")
+        || string_equal(word, "^=")
+        || string_equal(word, "|=");
+}
+
 string u_tok_type_to_readable(char type)
 //@requires u_is_token_type(type);
 {

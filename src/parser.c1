@@ -417,16 +417,12 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             exp->type = 'F';
             exp->iden = iden;
 
-            int CONST_MAX_PARAMS = 64;
-            exp->C_MAX_PARAMS = CONST_MAX_PARAMS;
-            exp->n_params = 0;
-            exp->params = alloc_array(ast_exp_t *, exp->C_MAX_PARAMS);
+            exp->params = v_create_vector();
 
             if (__p_fset_exp(ctx)) {
                 ast_exp_t *curr = __p_parse_exp(ctx);
                 if (curr == NULL) return NULL;
-                exp->params[exp->n_params] = curr;
-                exp->n_params++;
+                v_append(exp->params, (void *) curr);
 
                 while (__p_fset_comma(ctx)) {
                     if (!__p_expect_sep(",", ctx)) return NULL;
@@ -438,15 +434,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
                     curr = __p_parse_exp(ctx);
                     if (curr == NULL) return NULL;
 
-                    if (exp->n_params == exp->C_MAX_PARAMS) {
-                        string fst = "hit the limit of parameters; ";
-                        string snd = "search and increase `CONST_MAX_PARAMS` ";
-                        string trd = "in `parser.c0`";
-                        error(format("%s%s%s", fst, snd, trd));
-                    }
-
-                    exp->params[exp->n_params] = curr;
-                    exp->n_params++;
+                    v_append(exp->params, (void *) curr);
                 }
             }
 
@@ -685,6 +673,87 @@ bool __p_fset_simp(p_ctx_t *ctx)
 }
 
 // END fset for statements
+
+bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp)
+//@requires exp != NULL;
+{
+    bool is_lv = false;
+    if (exp->type == 'D' || exp->type == 'M' || exp->type == 'P') is_lv = true;
+    
+    if (exp->type == 'U' && string_equal(exp->operator, "*")) {
+        is_lv = __p_assert_left_value(ctx, exp->left);
+    }
+
+    if (exp->type == 'X') {
+        is_lv = __p_assert_left_value(ctx, exp->left);
+    }
+
+    if (!is_lv) {
+        __p_set_err(ctx, "LHS of assignment must be a left value");
+    }
+
+    return is_lv;
+}
+
+// BEGIN simple statement
+
+ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_simp(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    ast_stmt_t *stmt = alloc(ast_stmt_t);
+    if (__p_fset_exp(ctx)) {
+        ast_exp_t *fv = __p_parse_exp(ctx);
+        if (fv == NULL) return NULL;
+
+        stmt->type = 'E';
+        stmt->rv = fv;
+
+        if (!__p_is_eof(ctx)) {
+            l_token_t *peek = __p_peek(ctx);
+            if (__p_match(peek, 'O', "++") || __p_match(peek, 'O', "--")) {
+                __p_next(ctx);
+
+                stmt->type = 'P';
+                stmt->suffix_op = peek->str;
+                stmt->lv = fv;
+                stmt->rv = NULL;
+
+                if (!__p_assert_left_value(ctx, stmt->lv)) return NULL;
+
+            } else if (peek->type == 'O' && u_is_asn_op(peek->str)) {
+                __p_next(ctx);
+
+                if (!__p_fset_exp(ctx)) {
+                    __p_set_err(ctx, "expecting expression at assignment");
+                    return NULL;
+                }
+
+                ast_exp_t *rhs = __p_parse_exp(ctx);
+                if (rhs == NULL) return NULL;
+
+                stmt->type = 'A';
+                stmt->lv = fv;
+                stmt->rv = rhs;
+
+                if (!__p_assert_left_value(ctx, stmt->lv)) return NULL;
+            }
+        }
+
+    } else if (__p_fset_type(ctx)) {
+
+        // TODO
+
+    } else {
+        error("unreachable by first-set exclusion");
+    }
+
+    return stmt;
+}
+
+// end simple statement
 
 // BEGIN parsing stage
 
