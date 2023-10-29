@@ -318,6 +318,11 @@ void pt_test_simp_basic() {
     stmt = __p_parse_simp(ctx);
     assert(pt_is_stmt(stmt, 'S'));
     assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("return 123 + 64", "");
+    stmt = __p_parse_simp(ctx);
+    assert(pt_is_stmt(stmt, 'R'));
+    assert(__p_is_eof(ctx));
 }
 
 void pt_test_parser() {

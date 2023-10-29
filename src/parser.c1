@@ -673,7 +673,8 @@ bool __p_fset_simp(p_ctx_t *ctx)
 
     l_token_t *peek = __p_peek(ctx);
     return __p_match(peek, 'K', "error")
-        || __p_match(peek, 'K', "assert");
+        || __p_match(peek, 'K', "assert")
+        || __p_match(peek, 'K', "return");
 }
 
 bool __p_fset_stmt(p_ctx_t *ctx)
@@ -687,8 +688,7 @@ bool __p_fset_stmt(p_ctx_t *ctx)
     return __p_match(peek, 'S', "{")
         || __p_match(peek, 'K', "if")
         || __p_match(peek, 'K', "while")
-        || __p_match(peek, 'K', "for")
-        || __p_match(peek, 'K', "return");
+        || __p_match(peek, 'K', "for");
 }
 
 // END fset for statements
@@ -796,6 +796,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         __p_match(__p_peek(ctx), 'K', "assert") ||
         __p_match(__p_peek(ctx), 'K', "error")
     ) {
+
         l_token_t *kw_func = __p_next(ctx);
         stmt->type = string_equal(kw_func->str, "assert") ? 'S' : 'O';
         if (!__p_expect_sep("(", ctx)) return NULL;
@@ -810,6 +811,18 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         if (stmt->rv == NULL) return NULL;
         if (!__p_expect_sep(")", ctx)) return NULL;
 
+    } else if (__p_match(__p_peek(ctx), 'K', "return")) {
+
+        stmt->type = 'R';
+        __p_next(ctx);
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(ctx, "expecting expression in return");
+            return NULL;
+        }
+
+        stmt->rv = __p_parse_exp(ctx);
+        if (stmt->rv == NULL) return NULL;
+
     } else {
         error("unreachable by first-set exclusion");
     }
@@ -817,7 +830,55 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
     return stmt;
 }
 
-// end simple statement
+// END simple statement
+
+// BEGIN compound statement
+
+ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx);
+vec_t *__p_parse_block(p_ctx_t *ctx);
+
+ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_stmt(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    l_token_t *peek = __p_peek(ctx);
+    ast_stmt_t *stmt = alloc(ast_stmt_t);
+
+    if (__p_match(peek, 'S', "{")) {
+        stmt->type = 'B';
+        stmt->blk_a = __p_parse_block(ctx);
+    } else if (__p_match(peek, 'K', "if"))  {
+
+    } else if (__p_match(peek, 'K', "while"))  {
+
+    }
+
+    return stmt;
+}
+
+vec_t *__p_parse_block(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_match(__p_peek(ctx), 'S', "{");
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    vec_t *stmts = v_create_vector();
+    __p_next(ctx);
+
+    while (__p_fset_stmt(ctx)) {
+        ast_stmt_t *stmt = __p_parse_stmt(ctx);
+        if (stmt == NULL) return NULL;
+
+        v_append(stmts, (void *) stmt);
+    }
+
+    if (!__p_expect_sep("}", ctx)) return NULL;
+    return stmts;
+}
+
+// END compound statement
 
 // BEGIN parsing stage
 

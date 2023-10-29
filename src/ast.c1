@@ -120,6 +120,10 @@ struct ast_stmt_t {
 
     // `I`
     ast_block_t *blk_b;
+
+    // `F`
+    struct ast_stmt_t *init;
+    struct ast_stmt_t *incr;
 };
 typedef struct ast_stmt_t ast_stmt_t;
 
