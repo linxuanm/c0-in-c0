@@ -53,7 +53,7 @@ void pt_test_type_basic() {
     ctx = pt_make_ctx("void", "");
     assert(pt_is_type(__p_parse_type(ctx), 'V'));
     assert(__p_is_eof(ctx));
-
+    
     ctx = pt_make_ctx("struct foo", "$foo");
     type = __p_parse_type(ctx);
     assert(pt_is_type(type, 'X'));
@@ -83,7 +83,7 @@ void pt_test_type_basic() {
 
     ctx = pt_make_ctx("struct foo", "");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
-
+    
     ctx = pt_make_ctx("struct", "foo");
     assert(__p_parse_type(ctx) == NULL && ctx->err);
 

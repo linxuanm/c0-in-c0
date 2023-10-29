@@ -148,6 +148,16 @@ bool __p_expect_sep(string sep, p_ctx_t *ctx)
     return __p_expect('S', sep, ctx);
 }
 
+l_token_t *__p_expect_id_tok(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx) || __p_peek(ctx)->type != 'I') {
+        __p_set_err(ctx, "expecting identifier");
+        return NULL;
+    }
+    return __p_next(ctx);
+}
+
 l_token_t *__p_peek(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
@@ -288,8 +298,10 @@ bool __p_fset_stmt(p_ctx_t *ctx)
 // BEGIN expect grammars
 
 ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
+ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level);
 ast_type_t *__p_parse_type(p_ctx_t *ctx);
 ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx);
+ast_stmt_t *__p_parse_simp(p_ctx_t *ctx);
 
 ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
     if (!__p_fset_exp(ctx)) __p_set_err(ctx, "expecting expression");
@@ -304,6 +316,16 @@ ast_type_t *__p_expect_type(p_ctx_t *ctx) {
 ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
     if (!__p_fset_stmt(ctx)) __p_set_err(ctx, "expecting statement");
     return __p_parse_stmt(ctx);
+}
+
+ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
+    if (!__p_fset_exp(ctx)) __p_set_err(ctx, "expecting expression");
+    return __p_parse_exp_by_level(ctx, level);
+}
+
+ast_stmt_t *__p_expect_simp(p_ctx_t *ctx) {
+    if (!__p_fset_stmt(ctx)) __p_set_err(ctx, "expecting (simple) statement");
+    return __p_parse_simp(ctx);
 }
 
 // END expect grammars
@@ -328,19 +350,9 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         else if (string_equal(word, "char")) type->type = 'C';
         else if (string_equal(word, "void")) type->type = 'V';
         else if (string_equal(word, "struct")) {
-
-            if (__p_is_eof(ctx)) {
-                __p_eof_err(ctx);
-                return NULL;
-            }
-
-            l_token_t *iden = __p_next(ctx);
-            if (iden->type != 'I') {
-                __p_set_err_at(
-                    ctx, "expecting identifier after keyword \"struct\"", iden
-                );
-                return NULL;
-            }
+            
+            l_token_t *iden = __p_expect_id_tok(ctx);
+            if (iden == NULL) return NULL;
 
             if (!om_has_s(ctx->types, string_join("$", iden->str))) {
                 __p_set_err_at(
@@ -348,7 +360,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
                 );
                 return NULL;
             }
-
+        
             type->type = 'X';
             type->iden = iden->str;
         }
@@ -389,14 +401,6 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 // BEGIN expression production rules
 // this is gonna be hell; check `syntax.cf` for precedence info
 
-// basic exp parsing
-ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx);
-ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
-
-// operator precedence
-ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level);
-ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level);
-
 ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
@@ -409,13 +413,8 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
     // parenthesized expression
     if (__p_match(tok, 'S', "(")) {
 
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(ctx, "expecting expression");
-            return NULL;
-        }
-
         // yay alloc and immediate dealloc im very good at programming
-        exp = __p_parse_exp(ctx);
+        exp = __p_expect_exp(ctx);
         if (exp == NULL) return NULL;
         if (!__p_expect_sep(")", ctx)) return NULL;
 
@@ -441,11 +440,6 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         } else {
             exp->type = 'I';
             int *parsed = parse_int(lit_str, 10);
-            if (parsed == NULL) {
-                // sanity check: someone slipped in an invalid integer literal!
-                error("invalid integer literal");
-            }
-
             exp->lit_int = *parsed;
         }
 
@@ -471,12 +465,8 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 
                 while (__p_fset_comma(ctx)) {
                     if (!__p_expect_sep(",", ctx)) return NULL;
-                    if (!__p_fset_exp(ctx)) {
-                        __p_set_err(ctx, "expected expression after comma");
-                        return NULL;
-                    }
 
-                    curr = __p_parse_exp(ctx);
+                    curr = __p_expect_exp(ctx);
                     if (curr == NULL) return NULL;
 
                     v_append(exp->params, (void *) curr);
@@ -495,11 +485,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         exp->type = 'A';
         if (!__p_expect_sep("(", ctx)) return NULL;
 
-        if (!__p_fset_type(ctx)) {
-            __p_set_err(ctx, "expecting type in \"alloc\"");
-            return NULL;
-        }
-        exp->alloc_type = __p_parse_type(ctx);
+        exp->alloc_type = __p_expect_type(ctx);
         if (exp->alloc_type == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
@@ -509,20 +495,12 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         exp->type = 'R';
         if (!__p_expect_sep("(", ctx)) return NULL;
 
-        if (!__p_fset_type(ctx)) {
-            __p_set_err(ctx, "expecting type in \"alloc_array\"");
-            return NULL;
-        }
-        exp->alloc_type = __p_parse_type(ctx);
+        exp->alloc_type = __p_expect_type(ctx);
         if (exp->alloc_type == NULL) return NULL;
 
         if (!__p_expect_sep(",", ctx)) return NULL;
 
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(ctx, "expecting expression in \"alloc_array\"");
-            return NULL;
-        }
-        exp->alloc_length = __p_parse_exp(ctx);
+        exp->alloc_length = __p_expect_exp(ctx);
         if (exp->alloc_type == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
@@ -534,12 +512,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
     while (__p_fset_suffix(ctx)) {
         l_token_t *suf = __p_next(ctx);
         if (__p_match(suf, 'S', "[")) {
-            if (!__p_fset_exp(ctx)) {
-                __p_set_err(ctx, "expecting expression in index bracket");
-                return NULL;
-            }
-
-            ast_exp_t *idx = __p_parse_exp(ctx);
+            ast_exp_t *idx = __p_expect_exp(ctx);
             if (idx == NULL) return NULL;
             if (!__p_expect_sep("]", ctx)) return NULL;
 
@@ -555,11 +528,8 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
                 return NULL;
             }
 
-            l_token_t *name = __p_next(ctx);
-            if (name->type != 'I') {
-                __p_set_err_at(ctx, "expecting identifier (field name)", name);
-                return NULL;
-            }
+            l_token_t *name = __p_expect_id_tok(ctx);
+            if (name == NULL) return NULL;
 
             ast_exp_t *attr_exp = alloc(ast_exp_t);
             attr_exp->type = __p_match(suf, 'O', ".") ? 'M' : 'P';
@@ -596,17 +566,13 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
     int n_ops = num_tokens(raw_operators);
     string[] ops = parse_tokens(raw_operators);
 
-    ast_exp_t *exp = __p_parse_exp_by_level(ctx, level - 1);
+    ast_exp_t *exp = __p_expect_exp_by_level(ctx, level - 1);
     if (exp == NULL) return NULL;
 
     while (__p_fset_op(ctx, n_ops, ops)) {
         l_token_t *operator = __p_next(ctx);
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(ctx, "expecting expression after binary operator");
-            return NULL;
-        }
 
-        ast_exp_t *next = __p_parse_exp_by_level(ctx, level - 1);
+        ast_exp_t *next = __p_expect_exp_by_level(ctx, level - 1);
         if (next == NULL) return NULL;
         
         ast_exp_t *combine = alloc(ast_exp_t);
@@ -638,16 +604,12 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 
         if (__p_fset_op(ctx, n_ops, ops)) {
             l_token_t *prefix = __p_next(ctx);
-            if (!__p_fset_exp(ctx)) {
-                __p_set_err(ctx, "expecting expression after uary operator");
-                return NULL;
-            }
-
             ast_exp_t *exp = alloc(ast_exp_t);
             exp->type = 'U';
             exp->operator = prefix->str;
+
             // lazy right recusion hehe
-            exp->left = __p_parse_exp_by_level(ctx, level);
+            exp->left = __p_expect_exp_by_level(ctx, level);
 
             return exp;
         } else {
@@ -679,12 +641,7 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 
         if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'O', "?")) {
             __p_next(ctx);
-            if (!__p_fset_exp(ctx)) {
-                __p_set_err(ctx, "expecting expression after \"?\"");
-                return NULL;
-            }
-
-            ast_exp_t *if_exp = __p_parse_exp_by_level(ctx, level);
+            ast_exp_t *if_exp = __p_expect_exp_by_level(ctx, level);
             if (if_exp == NULL) return NULL;
 
             if (!__p_expect('O', ":", ctx)) return NULL;
@@ -759,13 +716,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
             } else if (peek->type == 'A') {
                 __p_next(ctx);
-
-                if (!__p_fset_exp(ctx)) {
-                    __p_set_err(ctx, "expecting expression at assignment");
-                    return NULL;
-                }
-
-                ast_exp_t *rhs = __p_parse_exp(ctx);
+                ast_exp_t *rhs = __p_expect_exp(ctx);
                 if (rhs == NULL) return NULL;
 
                 stmt->type = 'A';
@@ -789,6 +740,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         l_token_t *id_tok = __p_next(ctx);
         if (id_tok->type != 'I' || !__p_can_be_var(id_tok->str, ctx)) {
             __p_set_err_at(ctx, "expecting identifier in declaration", id_tok);
+            return NULL;
         }
 
         stmt->type = 'D';
@@ -797,12 +749,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'A', "=")) {
             __p_next(ctx);
-            if (!__p_fset_exp(ctx)) {
-                __p_set_err(ctx, "expecting expression at assignment");
-                return NULL;
-            }
-
-            ast_exp_t *rhs = __p_parse_exp(ctx);
+            ast_exp_t *rhs = __p_expect_exp(ctx);
             if (rhs == NULL) return NULL;
             stmt->rv = rhs;
         }
@@ -815,14 +762,8 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         l_token_t *kw_func = __p_next(ctx);
         stmt->type = string_equal(kw_func->str, "assert") ? 'S' : 'O';
         if (!__p_expect_sep("(", ctx)) return NULL;
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(
-                ctx, format("expecting expression in %s", kw_func->str)
-            );
-            return NULL;
-        }
 
-        stmt->rv = __p_parse_exp(ctx);
+        stmt->rv = __p_expect_exp(ctx);
         if (stmt->rv == NULL) return NULL;
         if (!__p_expect_sep(")", ctx)) return NULL;
 
@@ -830,12 +771,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         stmt->type = 'R';
         __p_next(ctx);
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(ctx, "expecting expression in return");
-            return NULL;
-        }
-
-        stmt->rv = __p_parse_exp(ctx);
+        stmt->rv = __p_expect_exp(ctx);
         if (stmt->rv == NULL) return NULL;
 
     } else {
@@ -876,10 +812,8 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         __p_next(ctx);
         if (!__p_expect_sep("(", ctx)) return NULL;
 
-        if (!__p_fset_exp(ctx)) {
-            __p_set_err(ctx, "expecting expression in if statement condition");
-            return NULL;
-        }
+        stmt->cond = __p_expect_exp(ctx);
+        if (stmt->cond == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
 
@@ -901,15 +835,8 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         // TODO
 
     } else {
-
-        if (!__p_fset_simp(ctx)) {
-            __p_set_err_at(ctx, "expecting statement", peek);
-            return NULL;
-        }
-
-        stmt = __p_parse_simp(ctx);
+        stmt = __p_expect_simp(ctx);
         if (stmt == NULL) return NULL;
-
     }
 
     return stmt;
