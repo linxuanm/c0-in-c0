@@ -786,7 +786,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 // BEGIN compound statement
 
 ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx);
-vec_t *__p_parse_block(p_ctx_t *ctx);
+vec_t *__p_expect_block(p_ctx_t *ctx);
 
 ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
@@ -801,7 +801,8 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 
         stmt = alloc(ast_stmt_t);
         stmt->type = 'B';
-        stmt->blk_a = __p_parse_block(ctx);
+        stmt->blk_a = __p_expect_block(ctx);
+        if (stmt->blk_a == NULL) return NULL;
 
     } else if (__p_match(peek, 'K', "if"))  {
 
@@ -817,39 +818,78 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 
         if (!__p_expect_sep(")", ctx)) return NULL;
 
-        // TODO
+        // `{` [<stmt>] `}`
+        stmt->blk_a = __p_expect_block(ctx);
+        if (stmt->blk_a == NULL) return NULL;
 
+        // `else` `{` [<stmt>] `}`
+        if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'K', "else")) {
+            __p_next(ctx);
+            stmt->blk_b = __p_expect_block(ctx);
+            if (stmt->blk_b == NULL) return NULL;
+        }
 
     } else if (__p_match(peek, 'K', "while"))  {
 
         stmt = alloc(ast_stmt_t);
         stmt->type = 'W';
 
-        // TODO
+        // `while` `(` <cond> `)`
+        __p_next(ctx);
+        if (!__p_expect_sep("(", ctx)) return NULL;
+
+        stmt->cond = __p_expect_exp(ctx);
+        if (stmt->cond == NULL) return NULL;
+
+        if (!__p_expect_sep(")", ctx)) return NULL;
+
+        // `{` [<stmt>] `}`
+        stmt->blk_a = __p_expect_block(ctx);
+        if (stmt->blk_a == NULL) return NULL;
 
     } else if (__p_match(peek, 'K', "for"))  {
 
         stmt = alloc(ast_stmt_t);
         stmt->type = 'F';
 
-        // TODO
+        // `for` `(` <stmt> `;` <cond> `;` <stmt> `)`
+        __p_next(ctx);
+        if (!__p_expect_sep("(", ctx)) return NULL;
+
+        if (__p_fset_simp(ctx)) {
+            stmt->init = __p_parse_simp(ctx);
+            if (stmt->init == NULL) return NULL;
+        }
+
+        if (!__p_expect_sep(";", ctx)) return NULL;
+        stmt->cond = __p_expect_exp(ctx);
+        if (stmt->cond == NULL) return NULL;
+        if (!__p_expect_sep(";", ctx)) return NULL;
+
+        if (__p_fset_simp(ctx)) {
+            l_token_t *err_trace = __p_peek(ctx);
+            stmt->incr = __p_parse_simp(ctx);
+            if (stmt->init == NULL) return NULL;
+        }
+
+        if (!__p_expect_sep(")", ctx)) return NULL;
 
     } else {
         stmt = __p_expect_simp(ctx);
         if (stmt == NULL) return NULL;
+
+        if (!__p_expect_sep(";", ctx)) return NULL;
     }
 
     return stmt;
 }
 
-vec_t *__p_parse_block(p_ctx_t *ctx)
+vec_t *__p_expect_block(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@requires !__p_is_eof(ctx);
-//@requires __p_match(__p_peek(ctx), 'S', "{");
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
+    if (!__p_expect_sep("{", ctx)) return NULL;
     vec_t *stmts = v_create_vector();
-    __p_next(ctx);
 
     while (__p_fset_stmt(ctx)) {
         ast_stmt_t *stmt = __p_parse_stmt(ctx);
