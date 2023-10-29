@@ -844,14 +844,56 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
     l_token_t *peek = __p_peek(ctx);
-    ast_stmt_t *stmt = alloc(ast_stmt_t);
+    ast_stmt_t *stmt;
 
     if (__p_match(peek, 'S', "{")) {
+
+        stmt = alloc(ast_stmt_t);
         stmt->type = 'B';
         stmt->blk_a = __p_parse_block(ctx);
+
     } else if (__p_match(peek, 'K', "if"))  {
 
+        stmt = alloc(ast_stmt_t);
+        stmt->type = 'I';
+
+        // `if` `(` <cond> `)`
+        __p_next(ctx);
+        if (!__p_expect_sep("(", ctx)) return NULL;
+
+        if (!__p_fset_exp(ctx)) {
+            __p_set_err(ctx, "expecting expression in if statement condition");
+            return NULL;
+        }
+
+        if (!__p_expect_sep(")", ctx)) return NULL;
+
+        // TODO
+
+
     } else if (__p_match(peek, 'K', "while"))  {
+
+        stmt = alloc(ast_stmt_t);
+        stmt->type = 'W';
+
+        // TODO
+
+    } else if (__p_match(peek, 'K', "for"))  {
+
+        stmt = alloc(ast_stmt_t);
+        stmt->type = 'F';
+
+        // TODO
+
+    } else {
+
+        if (!__p_fset_simp(ctx)) {
+            __p_set_err_at(ctx, "expecting statement", peek);
+            return NULL;
+        }
+
+        stmt = __p_parse_simp(ctx);
+        if (stmt == NULL) return NULL;
 
     }
 
