@@ -179,7 +179,7 @@ bool __p_is_type_name(string name, p_ctx_t *ctx)
 
 // END shorthands
 
-// BEGIN fset for types
+// BEGIN fsets
 
 // firset-set of left-recursion eliminated rule of TYPE
 bool __p_fset_typel(p_ctx_t *ctx)
@@ -210,7 +210,103 @@ bool __p_fset_type(p_ctx_t *ctx)
     return false;
 }
 
-// END fset for types
+bool __p_fset_exp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    if (__p_match(tok, 'S', "(")) return true;
+    if (tok->type == 'L') return true;
+    if (tok->type == 'I' && __p_can_be_var(tok->str, ctx)) return true;
+    if (__p_match(tok, 'K', "alloc")) return true;
+    if (__p_match(tok, 'K', "alloc_array")) return true;
+    if (tok->type == 'O' && u_is_unary(tok->str)) return true;
+
+    return false;
+}
+
+bool __p_fset_comma(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    return __p_match(__p_peek(ctx), 'S', ",");
+}
+
+bool __p_fset_op(p_ctx_t *ctx, int n_ops, string[] ops)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    for (int i = 0; i < n_ops; i++) {
+        if (__p_match(tok, 'O', ops[i])) return true;
+    }
+
+    return false;
+}
+
+bool __p_fset_suffix(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+
+    l_token_t *tok = __p_peek(ctx);
+    return __p_match(tok, 'S', "[")
+        || __p_match(tok, 'O', "->")
+        || __p_match(tok, 'O', ".");
+}
+
+bool __p_fset_simp(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_fset_exp(ctx) || __p_fset_type(ctx)) return true;
+
+    l_token_t *peek = __p_peek(ctx);
+    return __p_match(peek, 'K', "error")
+        || __p_match(peek, 'K', "assert")
+        || __p_match(peek, 'K', "return");
+}
+
+bool __p_fset_stmt(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    if (__p_is_eof(ctx)) return false;
+    if (__p_fset_simp(ctx)) return true;
+
+    // exclude `assert` and `error` and treat them as normal functions
+    l_token_t *peek = __p_peek(ctx);
+    return __p_match(peek, 'S', "{")
+        || __p_match(peek, 'K', "if")
+        || __p_match(peek, 'K', "while")
+        || __p_match(peek, 'K', "for");
+}
+
+// END fsets
+
+// BEGIN expect grammars
+
+ast_exp_t *__p_parse_exp(p_ctx_t *ctx);
+ast_type_t *__p_parse_type(p_ctx_t *ctx);
+ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx);
+
+ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
+    if (!__p_fset_exp(ctx)) __p_set_err(ctx, "expecting expression");
+    return __p_parse_exp(ctx);
+}
+
+ast_type_t *__p_expect_type(p_ctx_t *ctx) {
+    if (!__p_fset_type(ctx)) __p_set_err(ctx, "expecting type");
+    return __p_parse_type(ctx);
+}
+
+ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
+    if (!__p_fset_stmt(ctx)) __p_set_err(ctx, "expecting statement");
+    return __p_parse_stmt(ctx);
+}
+
+// END expect grammars
 
 // BEGIN type production rules
 
@@ -289,58 +385,6 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 }
 
 // END type production rules
-
-// BEGIN fset for expressions
-
-bool __p_fset_exp(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_is_eof(ctx)) return false;
-
-    l_token_t *tok = __p_peek(ctx);
-    if (__p_match(tok, 'S', "(")) return true;
-    if (tok->type == 'L') return true;
-    if (tok->type == 'I' && __p_can_be_var(tok->str, ctx)) return true;
-    if (__p_match(tok, 'K', "alloc")) return true;
-    if (__p_match(tok, 'K', "alloc_array")) return true;
-    if (tok->type == 'O' && u_is_unary(tok->str)) return true;
-
-    return false;
-}
-
-bool __p_fset_comma(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_is_eof(ctx)) return false;
-
-    return __p_match(__p_peek(ctx), 'S', ",");
-}
-
-bool __p_fset_op(p_ctx_t *ctx, int n_ops, string[] ops)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_is_eof(ctx)) return false;
-
-    l_token_t *tok = __p_peek(ctx);
-    for (int i = 0; i < n_ops; i++) {
-        if (__p_match(tok, 'O', ops[i])) return true;
-    }
-
-    return false;
-}
-
-bool __p_fset_suffix(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_is_eof(ctx)) return false;
-
-    l_token_t *tok = __p_peek(ctx);
-    return __p_match(tok, 'S', "[")
-        || __p_match(tok, 'O', "->")
-        || __p_match(tok, 'O', ".");
-}
-
-// END fset for expressions
 
 // BEGIN expression production rules
 // this is gonna be hell; check `syntax.cf` for precedence info
@@ -663,35 +707,6 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 }
 
 // END expression production rules
-
-// BEGIN fset for statements
-
-bool __p_fset_simp(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_fset_exp(ctx) || __p_fset_type(ctx)) return true;
-
-    l_token_t *peek = __p_peek(ctx);
-    return __p_match(peek, 'K', "error")
-        || __p_match(peek, 'K', "assert")
-        || __p_match(peek, 'K', "return");
-}
-
-bool __p_fset_stmt(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    if (__p_is_eof(ctx)) return false;
-    if (__p_fset_simp(ctx)) return true;
-
-    // exclude `assert` and `error` and treat them as normal functions
-    l_token_t *peek = __p_peek(ctx);
-    return __p_match(peek, 'S', "{")
-        || __p_match(peek, 'K', "if")
-        || __p_match(peek, 'K', "while")
-        || __p_match(peek, 'K', "for");
-}
-
-// END fset for statements
 
 bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp, l_token_t *tok)
 //@requires exp != NULL;
