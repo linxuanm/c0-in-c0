@@ -1,4 +1,5 @@
 #use <conio>
+#use <string>
 
 /*
     A vector for integers.
@@ -136,3 +137,41 @@ int v_remove_last_int(vec_t *vec)
     vec->len--;
     return * (int *) vec->data[vec->len + 1];
 }
+
+string v_get_string(vec_t *vec, int i)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < vec->len;
+//@ensures string_equal(\result, * (string *) vec->data[i]);
+{
+    return * (string *) v_get(vec, i);
+}
+
+void v_set_string(vec_t *vec, int i, string v)
+//@requires v_is_vector(vec);
+//@requires 0 <= i && i < v_length(vec);
+//@ensures string_equal(v, * (string *) vec->data[i]);
+{
+    string *v_ptr = alloc(string);
+    *v_ptr = v;
+    vec->data[i] = (void *) v_ptr;
+}
+
+void v_append_string(vec_t *vec, string v)
+//@requires v_is_vector(vec);
+{
+    string *v_ptr = alloc(string);
+    *v_ptr = v;
+    vec->data[vec->len] = (void *) v_ptr;
+    vec->len++;
+    __v_resize(vec);
+}
+
+string v_remove_last_string(vec_t *vec)
+//@requires v_is_vector(vec);
+//@requires 0 < v_length(vec);
+{
+    vec->len--;
+    return * (string *) vec->data[vec->len + 1];
+}
+
+// END shorthand

@@ -128,35 +128,49 @@ struct ast_stmt_t {
 typedef struct ast_stmt_t ast_stmt_t;
 
 struct ast_func_t {
-    // declared but not defined
-    bool undefined;
+    bool defined;
+
+    ast_type_t *ret_type;
+    string name;
+
+    vec_t *param_types;
+    vec_t *param_names;
+
+    vec_t *stmts;
 };
 typedef struct ast_func_t ast_func_t;
 
+struct ast_struct_t {
+    bool defined;
+
+    string name;
+    vec_t *mem_types;
+    vec_t *mem_names;
+};
+typedef struct ast_struct_t ast_struct_t;
+
+struct ast_alias_t {
+    string name;
+    ast_type_t *original;
+};
+
+typedef struct ast_alias_t ast_alias_t;
+
+struct ast_glob_t {
+    /*
+        - F: function
+        - S: struct
+        - T: typedef
+        - U: use
+     */
+    char type;
+
+    ast_func_t *func;
+    ast_struct_t *struc;
+    ast_alias_t *alias;
+};
+
 struct ast_program_t {
-    int n_types;
-    int n_funcs;
-    ast_type_t *[] types_pool;
-    ast_func_t *[] funcs_pool;
-    om_map_t *type_dict;
-    om_map_t *func_dict;
+    vec_t *globs;
 };
 typedef struct ast_program_t ast_program_t;
-
-// BEGIN contracts
-
-bool ast_is_program(ast_program_t *prog) {
-    if (prog == NULL) return false;
-    if (prog->n_types < 0 || prog->n_funcs < 0) return false;
-    if (prog->n_funcs != om_size(prog->func_dict)) return false;
-    if (prog->n_types != om_size(prog->type_dict)) return false;
-
-    //@assert prog->n_types == \length(prog->types_pool);
-    //@assert prog->n_funcs == \length(prog->funcs_pool);
-
-    if (prog->type_dict == NULL || prog->func_dict == NULL) return false;
-
-    return true;
-}
-
-// END contracts

@@ -148,14 +148,22 @@ bool __p_expect_sep(string sep, p_ctx_t *ctx)
     return __p_expect('S', sep, ctx);
 }
 
-l_token_t *__p_expect_id_tok(p_ctx_t *ctx)
+l_token_t *__p_expect_id_tok(p_ctx_t *ctx, bool is_var)
 //@requires __p_is_ctx(ctx);
 {
     if (__p_is_eof(ctx) || __p_peek(ctx)->type != 'I') {
         __p_set_err(ctx, "expecting identifier");
         return NULL;
     }
-    return __p_next(ctx);
+    l_token_t *tok = __p_next(ctx);
+    if (is_var && !__p_can_be_var(tok->str, ctx)) {
+        __p_set_err_at(
+            ctx,
+            format("expecting variable/function name, not \"%s\"", tok->str),
+            tok
+        );
+    }
+    return tok;
 }
 
 l_token_t *__p_peek(p_ctx_t *ctx)
@@ -351,7 +359,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         else if (string_equal(word, "void")) type->type = 'V';
         else if (string_equal(word, "struct")) {
             
-            l_token_t *iden = __p_expect_id_tok(ctx);
+            l_token_t *iden = __p_expect_id_tok(ctx, false);
             if (iden == NULL) return NULL;
 
             if (!om_has_s(ctx->types, string_join("$", iden->str))) {
@@ -528,7 +536,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
                 return NULL;
             }
 
-            l_token_t *name = __p_expect_id_tok(ctx);
+            l_token_t *name = __p_expect_id_tok(ctx, false);
             if (name == NULL) return NULL;
 
             ast_exp_t *attr_exp = alloc(ast_exp_t);
@@ -903,6 +911,150 @@ vec_t *__p_expect_block(p_ctx_t *ctx)
 }
 
 // END compound statement
+
+// BEGIN function def/decl
+
+ast_func_t *__p_parse_func(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_fset_type(ctx);
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    ast_func_t *func = alloc(ast_func_t);
+    func->param_types = v_create_vector();
+    func->param_names = v_create_vector();
+
+    func->ret_type = __p_expect_type(ctx);
+    if (func->ret_type == NULL) return NULL;
+
+    l_token_t *iden_tok = __p_expect_id_tok(ctx, true);
+    if (iden_tok == NULL) return NULL;
+    func->name = iden_tok->str;
+
+    if (!__p_expect_sep("(", ctx)) return NULL;
+
+    if (__p_fset_type(ctx)) {
+        ast_type_t *ptype = __p_expect_type(ctx);
+        if (ptype == NULL) return NULL;
+
+        l_token_t *iden = __p_expect_id_tok(ctx, true);
+        if (iden == NULL) return NULL;
+
+        v_append(func->param_types, (void *) ptype);
+        v_append_string(func->param_names, iden->str);
+
+        while (__p_fset_comma(ctx)) {
+            __p_next(ctx);
+
+            ptype = __p_expect_type(ctx);
+            if (ptype == NULL) return NULL;
+
+            iden = __p_expect_id_tok(ctx, true);
+            if (iden == NULL) return NULL;
+
+            v_append(func->param_types, (void *) ptype);
+            v_append_string(func->param_names, iden->str);
+        }
+    }
+
+    if (!__p_expect_sep(")", ctx)) return NULL;
+
+    if (__p_is_eof(ctx)) {
+        __p_eof_err(ctx);
+        return NULL;
+    }
+
+    if (__p_match(__p_peek(ctx), 'S', ";")) {
+        __p_next(ctx);
+        func->defined = false;
+    } else {
+        func->defined = true;
+        func->stmts = __p_expect_block(ctx);
+        if (func->stmts == NULL) return NULL;
+    }
+
+    return func;
+}
+
+// END function def/decl
+
+// BEGIN typedef
+
+ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_match(__p_peek(ctx), 'K', "typedef");
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    __p_next(ctx);
+    ast_alias_t *alias = alloc(ast_alias_t);
+
+    alias->original = __p_expect_type(ctx);
+    if (alias->original == NULL) return NULL;
+
+    l_token_t *tok = __p_expect_id_tok(ctx, false);
+    if (tok == NULL) return NULL;
+    alias->name = tok->str;
+    if (__p_expect_sep(";", ctx)) return NULL;
+
+    om_insert_si(ctx->types, alias->name, 0);
+
+    return alias;
+}
+
+// END typedef
+
+// BEGIN struct
+
+ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+//@requires !__p_is_eof(ctx);
+//@requires __p_match(__p_peek(ctx), 'K', "struct");
+{
+    __p_next(ctx);
+    ast_struct_t *strct = alloc(ast_struct_t);
+
+    l_token_t *tok = __p_expect_id_tok(ctx, false);
+    if (tok == NULL) return NULL;
+    strct->name = tok->str;
+
+    if (__p_is_eof(ctx)) {
+        __p_eof_err(ctx);
+        return NULL;
+    }
+
+    if (__p_match(__p_peek(ctx), 'S', ";")) {
+        __p_next(ctx);
+        strct->defined = false;
+    } else {
+        strct->defined = true;
+        strct->mem_types = v_create_vector();
+        strct->mem_names = v_create_vector();
+
+        if (!__p_expect_sep("{", ctx)) return NULL;
+
+        while  (__p_fset_type(ctx)) {
+            ast_type_t *mtype = __p_expect_type(ctx);
+            if (mtype == NULL) return NULL;
+
+            l_token_t *mname = __p_expect_id_tok(ctx, false);
+            if (tok == NULL) return NULL;
+
+            if (!__p_expect_sep(";", ctx)) return NULL;
+
+            v_append(strct->mem_types, (void *) mtype);
+            v_append_string(strct->mem_names, mname->str);
+        }
+
+        if (!__p_expect_sep("}", ctx)) return NULL;
+        if (!__p_expect_sep(";", ctx)) return NULL;
+    }
+
+    om_insert_si(ctx->types, string_join("$", strct->name), 0);
+    return strct;
+}
+
+// END struct
 
 // BEGIN parsing stage
 
