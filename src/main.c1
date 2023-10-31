@@ -1,20 +1,75 @@
 #use <args>
 #use <conio>
+#use <string>
 
-void compile_file(string path) {
-    string res = f_read_file(path);
-    println(res);
+void compile_file(string path, cparams_t *params) {
+    string code = f_read_file(path);
+    
+    string res = compile(code, params);
+
+    
 }
 
-int _main() {
+void print_padded(string s, int pad) {
+    printf("%s", s);
+    for (int i = 0; i <  pad - string_length(s); i++) {
+        printchar(' ');
+    }
+}
+
+void print_help() {
+    println("Usage: ccc0 [OPTION...] SOURCEFILE");
+    println("where OPTION is");
+
+    int pad = string_length("  --no-purity-check");
+
+    print_padded("  --help", pad);
+    println("  Give short usage message and exit");
+
+    print_padded("  --no-purity-check", pad);
+    println("  Disable checking contract functions for purity (WIP)");
+
+    print_padded("  --warning", pad);
+    println("  Enable warning");
+
+    print_padded("  --dump-ast", pad);
+    println("  Pretty print the program's abstract syntax tree");
+}
+
+int main() {
+
+    bool *help = alloc(bool);
+    args_flag("--help",  help);
+
+    bool *purity = alloc(bool);
+    args_flag("--no-purity-check",  purity);
+
+    bool *warning = alloc(bool);
+    args_flag("--warning",  warning);
+
+    bool *dump_ast = alloc(bool);
+    args_flag("--warning",  dump_ast);
+
     args_t args = args_parse();
     if (args->argc == 0) {
-        println("Usage: ccc0 [OPTION...] SOURCEFILE");
-        println("where OPTION is");
-        println("<TODO>");
+        print_help();
     } else {
         string source = args->argv[0];
-        compile_file(source);
+        if (string_charat(source, 0) == '-') {
+            error(format("unrecognized option \"%s\"", source));
+        }
+
+        if (*help) {
+            print_help();
+            return 0;
+        }
+
+        cparams_t *params = alloc(cparams_t);
+        params->purity = *purity;
+        params->warining = *warning;
+        params->dump_ast = *dump_ast;
+        
+        compile_file(source, params);
     }
 
     return 0;

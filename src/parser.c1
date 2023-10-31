@@ -1096,14 +1096,42 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
 
 // BEGIN parsing stage
 
-ast_program_t *p_parse_tokens(int n_tokens, l_token_t *[] tokens)
-//@requires n_tokens <= \length(tokens);
-{
-    p_ctx_t *ctx = p_create_ctx(n_tokens, tokens);
+struct p_result_t {
+    bool successful;
+    string err_msg;
+    int err_row;
+    int err_col;
 
+    ast_program_t *prog;
+};
+typedef struct p_result_t p_result_t;
+
+p_result_t *p_parse_tokens(vec_t *tokens)
+//@requires v_is_vector(tokens);
+//@ensures \result != NULL;
+{
+    l_token_t *[] tok_arr  = alloc_array(l_token_t *, v_length(tokens));
+
+    for (int i = 0; i < v_length(tokens); i++) {
+        tok_arr[i] = (l_token_t *) v_get(tokens, i);
+    }
+
+    p_result_t *result = alloc(p_result_t);
+
+    p_ctx_t *ctx = p_create_ctx(tokens->len, tok_arr);
     ast_program_t *prog = alloc(ast_program_t);
 
-    return prog;
+    if (prog == NULL) {
+        result->successful = false;
+        result->err_msg = ctx->err_msg;
+        result->err_row = ctx->err_row;
+        result->err_col = ctx->err_col;
+    } else {
+        result->successful = true;
+        result->prog = prog;
+    }
+
+    return result;
 }
 
 // END parsing stage
