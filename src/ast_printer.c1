@@ -1,0 +1,19 @@
+#use <conio>
+#use <string>
+
+void ap_print_program(ast_program_t *prog)
+//@requires prog != NULL;
+{
+    for (int i = 0; i < v_length(prog->globs); i++) {
+        ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
+        if (glob->type == 'F') {
+
+        } else if (glob->type == 'S') {
+
+        } else if (glob->type == 'T') {
+
+        } else {
+            error("#use not supported yet");
+        }
+    }
+}

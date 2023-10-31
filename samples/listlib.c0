@@ -4,6 +4,9 @@
  * 15-122 Principles of Imperative Computation
  */
 
+struct list_node;
+struct sortedlist_header;
+
 typedef struct list_node list;
 struct list_node {
   int data;

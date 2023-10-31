@@ -13,11 +13,10 @@ bool pt_is_stmt(ast_stmt_t *stmt, char expected) {
 }
 
 p_ctx_t *pt_make_ctx(string code, string type_names) {
-    l_token_t *[] tokens = alloc_array(l_token_t *, 65536);
-    int n_tokens = l_tokenize(code, tokens);
-    assert(n_tokens != -1);
+    vec_t *tokens = l_tokenize(code);
+    assert(tokens != NULL);
 
-    p_ctx_t *ctx = p_create_ctx(n_tokens, tokens);
+    p_ctx_t *ctx = p_create_ctx(tokens);
 
     int n_types = num_tokens(type_names);
     string[] types = parse_tokens(type_names);
@@ -270,6 +269,11 @@ void pt_test_exp_basic() {
     assert(string_equal(exp->right->left->attr, "baz"));
     assert(pt_is_exp(exp->right->left->left, 'P'));
     assert(string_equal(exp->right->left->left->attr, "yay"));
+    assert(__p_is_eof(ctx));
+
+    ctx = pt_make_ctx("hello.abc == 3", "");
+    exp = __p_parse_exp(ctx);
+    assert(pt_is_exp(exp, 'O'));
     assert(__p_is_eof(ctx));
 }
 

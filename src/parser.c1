@@ -40,14 +40,17 @@ bool __p_is_eof(p_ctx_t *ctx)
 
 // BEGIN constructors
 
-p_ctx_t *p_create_ctx(int n_tokens, l_token_t *[] tokens)
+p_ctx_t *p_create_ctx(vec_t *tokens)
 //@ensures __p_is_ctx(\result);
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
     ctx->types = om_create_map(&string_ptr_compare);
 
-    ctx->n_tokens = n_tokens;
-    ctx->tokens = tokens;
+    ctx->n_tokens = v_length(tokens);
+    ctx->tokens = alloc_array(l_token_t *, ctx->n_tokens);
+    for (int i = 0; i < ctx->n_tokens; i++) {
+        ctx->tokens[i] = (l_token_t *) v_get(tokens, i);
+    }
 
     return ctx;
 }
@@ -121,12 +124,12 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
     ctx->pc++;
 
     if (!__p_match(tok, type, word)) {
-        ctx->err = true;
-        ctx->err_msg = format(
+        string err_msg = format(
             "expecting %s \"%s\", got %s \"%s\"",
             u_tok_type_to_readable(type), word,
             u_tok_type_to_readable(tok->type), tok->str
         );
+        __p_set_err_at(ctx, err_msg, tok);
 
         return false;
     }
@@ -193,6 +196,29 @@ bool __p_is_type_name(string name, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 {
     return om_has_s(ctx->types, name);
+}
+
+void __p_debug_pos(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx);
+{
+    printf(
+        "%c %s %d %d\n",
+        __p_peek(ctx)->type,
+        __p_peek(ctx)->str,
+        __p_peek(ctx)->row,
+        __p_peek(ctx)->col
+    );
+}
+
+vec_t *__p_convert_stmt_to_block(ast_stmt_t *stmt)
+//@requires stmt != NULL;
+//@ensures v_is_vector(\result);
+{
+    if (stmt->type == 'B') return stmt->blk_a;
+
+    vec_t *res = v_create_vector();
+    v_append(res, (void *) stmt);
+    return res;
 }
 
 // END shorthands
@@ -804,7 +830,6 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 {
     l_token_t *peek = __p_peek(ctx);
     ast_stmt_t *stmt;
-
     if (__p_match(peek, 'S', "{")) {
 
         stmt = alloc(ast_stmt_t);
@@ -820,21 +845,24 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         // `if` `(` <cond> `)`
         __p_next(ctx);
         if (!__p_expect_sep("(", ctx)) return NULL;
-
+        
         stmt->cond = __p_expect_exp(ctx);
         if (stmt->cond == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
 
         // `{` [<stmt>] `}`
-        stmt->blk_a = __p_expect_block(ctx);
-        if (stmt->blk_a == NULL) return NULL;
+        ast_stmt_t *if_code = __p_expect_stmt(ctx);
+        if (if_code == NULL) return NULL;
+        stmt->blk_a = __p_convert_stmt_to_block(if_code);
+        
 
         // `else` `{` [<stmt>] `}`
         if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'K', "else")) {
             __p_next(ctx);
-            stmt->blk_b = __p_expect_block(ctx);
-            if (stmt->blk_b == NULL) return NULL;
+            ast_stmt_t *else_code = __p_expect_stmt(ctx);
+            if (else_code == NULL) return NULL;
+            stmt->blk_b = __p_convert_stmt_to_block(else_code);
         }
 
     } else if (__p_match(peek, 'K', "while"))  {
@@ -852,8 +880,9 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         if (!__p_expect_sep(")", ctx)) return NULL;
 
         // `{` [<stmt>] `}`
-        stmt->blk_a = __p_expect_block(ctx);
-        if (stmt->blk_a == NULL) return NULL;
+        ast_stmt_t *content = __p_expect_stmt(ctx);
+        if (content == NULL) return NULL;
+        stmt->blk_a = __p_convert_stmt_to_block(content);
 
     } else if (__p_match(peek, 'K', "for"))  {
 
@@ -881,6 +910,11 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         }
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+
+        // `{` [<stmt>] `}`
+        ast_stmt_t *content = __p_expect_stmt(ctx);
+        if (content == NULL) return NULL;
+        stmt->blk_a = __p_convert_stmt_to_block(content);
 
     } else {
         stmt = __p_expect_simp(ctx);
@@ -995,7 +1029,7 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
     l_token_t *tok = __p_expect_id_tok(ctx, false);
     if (tok == NULL) return NULL;
     alias->name = tok->str;
-    if (__p_expect_sep(";", ctx)) return NULL;
+    if (!__p_expect_sep(";", ctx)) return NULL;
 
     om_insert_si(ctx->types, alias->name, 0);
 
@@ -1110,16 +1144,10 @@ p_result_t *p_parse_tokens(vec_t *tokens)
 //@requires v_is_vector(tokens);
 //@ensures \result != NULL;
 {
-    l_token_t *[] tok_arr  = alloc_array(l_token_t *, v_length(tokens));
-
-    for (int i = 0; i < v_length(tokens); i++) {
-        tok_arr[i] = (l_token_t *) v_get(tokens, i);
-    }
-
     p_result_t *result = alloc(p_result_t);
 
-    p_ctx_t *ctx = p_create_ctx(tokens->len, tok_arr);
-    ast_program_t *prog = alloc(ast_program_t);
+    p_ctx_t *ctx = p_create_ctx(tokens);
+    ast_program_t *prog = __p_parse_program(ctx);
 
     if (prog == NULL) {
         result->successful = false;

@@ -63,20 +63,20 @@ vec_t *l_tokenize(string code) {
     // yes ik ugly
     int n_token_types = 6;
     re_dfa_t *[] regexs = alloc_array(re_dfa_t *, n_token_types);
-    regexs[0] = R_IDENTIFIER;
-    regexs[1] = R_SEP;
-    regexs[2] = R_ASN_OP;
-    regexs[3] = R_WHITE;
+    regexs[0] = R_WHITE;
+    regexs[1] = R_OPERATOR;
+    regexs[2] = R_SEP;
+    regexs[3] = R_ASN_OP;
     regexs[4] = R_LITERAL;
-    regexs[5] = R_OPERATOR;
+    regexs[5] = R_IDENTIFIER;
 
     char[] token_types = alloc_array(char, n_token_types);
-    token_types[0] = 'I';
-    token_types[1] = 'S';
-    token_types[2] = 'A';
-    token_types[3] = 'W';
+    token_types[0] = 'W';
+    token_types[1] = 'O';
+    token_types[2] = 'S';
+    token_types[3] = 'A';
     token_types[4] = 'L';
-    token_types[5] = 'O';
+    token_types[5] = 'I';
 
     // tokenizer position init
     int row = 1;
