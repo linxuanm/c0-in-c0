@@ -169,6 +169,7 @@ struct ast_glob_t {
     ast_struct_t *struc;
     ast_alias_t *alias;
 };
+typedef struct ast_glob_t ast_glob_t;
 
 struct ast_program_t {
     vec_t *globs;

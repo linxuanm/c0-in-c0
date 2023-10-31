@@ -1010,6 +1010,7 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "struct");
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
     __p_next(ctx);
     ast_struct_t *strct = alloc(ast_struct_t);
@@ -1055,6 +1056,43 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 }
 
 // END struct
+
+ast_program_t *__p_parse_program(p_ctx_t *ctx)
+//@requires ctx != NULL;
+//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+{
+    ast_program_t *prog = alloc(ast_program_t);
+
+    while (!__p_is_eof(ctx)) {
+        ast_glob_t *glob = alloc(ast_glob_t);
+        l_token_t *peek = __p_peek(ctx);
+
+        if (__p_match(peek, 'K', "struct")) {
+            glob->type = 'S';
+
+            ast_struct_t *strct = __p_parse_struct(ctx);
+            if (strct == NULL) return NULL;
+            glob->struc = strct;
+        } else if (__p_match(peek, 'K', "typedef")) {
+            glob->type = 'T';
+
+            ast_alias_t *alias = __p_parse_alias(ctx);
+            if (alias == NULL) return NULL;
+            glob->alias = alias;
+        } else if (__p_fset_type(ctx)) {
+            glob->type = 'F';
+
+            ast_func_t *func = __p_parse_func(ctx);
+            if (func == NULL) return NULL;
+            glob->func = func;
+        } else {
+            __p_set_err(ctx, "expecting typedef, struct or function def");
+            return NULL;
+        }
+    }
+
+    return prog;
+}
 
 // BEGIN parsing stage
 
