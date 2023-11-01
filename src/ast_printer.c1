@@ -1,19 +1,205 @@
 #use <conio>
 #use <string>
 
+void __ap_indent(int size)
+//@requires size >= 0;
+{
+    for (int i = 0; i < size; i++) print("    ");
+}
+
+void __ap_print_type(ast_type_t *type)
+//@requires type != NULL;
+{
+    if (type->type == 'I') print("int");
+    else if (type->type == 'B') print("bool");
+    else if (type->type == 'S') print("string");
+    else if (type->type == 'C') print("char");
+    else if (type->type == 'V') print("void");
+    else if (type->type == 'D') print(type->iden);
+    else if (type->type == 'X') printf("struct %s", type->iden);
+    else if (type->type == 'A') {
+        __ap_print_type(type->content);
+        print("[]");
+    }
+    else if (type->type == 'P') {
+        __ap_print_type(type->content);
+        print("*");
+    } else {
+        print("<unknown_type>");
+    }
+}
+
+void __ap_print_exp(ast_exp_t *exp, bool add_paren)
+//@requires exp != NULL;
+{
+    if (exp->type == 'I') printint(exp->lit_int);
+    else if (exp->type == 'C') printchar(exp->lit_chr);
+    else if (exp->type == 'S') print(exp->lit_str);
+    else if (exp->type == 'B') printbool(exp->lit_boo);
+    else if (exp->type == 'N') print("NULL");
+    else if (exp->type == 'D') print(exp->iden);
+    else if (exp->type == 'N') print("NULL");
+    else if (exp->type == 'F') {
+        printf("%s(", exp->iden);
+
+        if (v_length(exp->params) > 0) {
+            __ap_print_exp((ast_exp_t *) v_get(exp->params, 0), false);
+            for (int i = 1; i < v_length(exp->params); i++) {
+                print(", ");
+                __ap_print_exp((ast_exp_t *) v_get(exp->params, i), false);
+            }
+        }
+
+        printchar(')');
+    } else if (exp->type == 'X') {
+        __ap_print_exp(exp->left, false);
+        printchar('[');
+        __ap_print_exp(exp->right, false);
+        printchar(']');
+    } else if (exp->type == 'A') {
+        print("alloc(");
+        __ap_print_type(exp->alloc_type);
+        printchar(')');
+    } else if (exp->type == 'R') {
+        print("alloc_array(");
+        __ap_print_type(exp->alloc_type);
+        print(", ");
+        __ap_print_exp(exp->alloc_length, false);
+        printchar(')');
+    } else if (exp->type == 'O') {
+        if (add_paren) printchar('(');
+        __ap_print_exp(exp->left, true);
+        printf(" %s ", exp->operator);
+        __ap_print_exp(exp->right, true);
+        if (add_paren) printchar(')');
+    } else if (exp->type == 'U') {
+        if (add_paren) printchar('(');
+        printf("%s", exp->operator);
+        __ap_print_exp(exp->left, true);
+        if (add_paren) printchar(')');
+    } else if (exp->type == 'T') {
+        
+    } else if (exp->type == 'M') {
+        
+    } else if (exp->type == 'P') {
+        
+    } else {
+        print("<unknown_expression>");
+    }
+}
+
+void __ap_print_stmt(ast_stmt_t *stmt, int indent)
+//@requires stmt != NULL;
+{
+    if (stmt->type == 'A') {
+        __ap_indent(indent);
+        __ap_print_exp(stmt->lv, false);
+        printf(" %s ", stmt->asn_op);
+        __ap_print_exp(stmt->rv, false);
+        println(";");
+    } else if (stmt->type == 'P') {
+        __ap_indent(indent);
+        __ap_print_exp(stmt->lv, false);
+        printf("%s;\n", stmt->suffix_op);
+    } else if (stmt->type == 'E') {
+        __ap_indent(indent);
+        __ap_print_exp(stmt->rv, false);
+        println(";");
+    } else if (stmt->type == 'D') {
+        __ap_indent(indent);
+        __ap_print_type(stmt->decl_type);
+        printf(" %s", stmt->decl_iden);
+
+        if (stmt->rv == NULL) {
+            println(";");
+        } else {
+            print(" = ");
+            __ap_print_exp(stmt->rv, false);
+            println(";");
+        }
+    } else if (stmt->type == 'D') {
+        
+    }
+}
+
+void __ap_print_func(ast_func_t *func)
+//@requires func != NULL;
+{
+    __ap_print_type(func->ret_type);
+    printf(" %s(", func->name);
+
+    if (v_length(func->param_types) > 0) {
+        __ap_print_type((ast_type_t *) v_get(func->param_types, 0));
+        printf(" %s", * (string *) v_get(func->param_names, 0));
+
+        for (int i = 1; i < v_length(func->param_types); i++) {
+            print(", ");
+            __ap_print_type((ast_type_t *) v_get(func->param_types, i));
+            printf(" %s", * (string *) v_get(func->param_names, i));
+        }
+    }
+
+    printchar(')');
+
+    if (func->defined) {
+        println(" {");
+
+        for (int i = 0; i < v_length(func->stmts); i++) {
+            __ap_print_stmt((ast_stmt_t *) v_get(func->stmts, i), 1);
+        }
+
+        printchar('}');
+    } else {
+        printchar(';');
+    }
+
+    println("");
+}
+
+void __ap_print_struct(ast_struct_t *strct)
+//@requires strct != NULL;
+{
+    printf("struct %s", strct->name);
+
+    if (strct->defined) {
+        println(" {");
+
+        for (int i = 0; i < v_length(strct->mem_types); i++) {
+            __ap_indent(1);
+            __ap_print_type((ast_type_t *) v_get(strct->mem_types, i));
+            printf(" %s;\n", * (string *) v_get(strct->mem_names, i));
+        }
+
+        println("};");
+    } else {
+        println(";");
+    }
+}
+
+void __ap_print_alias(ast_alias_t *alias)
+//@requires alias != NULL;
+{
+    print("typedef ");
+    __ap_print_type(alias->original);
+    printf(" %s;\n", alias->name);
+}
+
 void ap_print_program(ast_program_t *prog)
 //@requires prog != NULL;
 {
     for (int i = 0; i < v_length(prog->globs); i++) {
         ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
         if (glob->type == 'F') {
-
+            __ap_print_func(glob->func);
         } else if (glob->type == 'S') {
-
+            __ap_print_struct(glob->struc);
         } else if (glob->type == 'T') {
-
-        } else {
+            __ap_print_alias(glob->alias);
+        } else if (glob->type == 'U') {
             error("#use not supported yet");
+        } else {
+            print("<unknown_global_defn>");
         }
+        println("");
     }
 }

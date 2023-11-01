@@ -553,7 +553,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             ast_exp_t *idx_exp = alloc(ast_exp_t);
             idx_exp->type = 'X';
             idx_exp->left = exp;
-            idx_exp->right = idx_exp;
+            idx_exp->right = idx;
             exp = idx_exp;
 
         } else if (__p_match(suf, 'O', "->") || __p_match(suf, 'O', ".")) {
@@ -754,6 +754,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
                 if (rhs == NULL) return NULL;
 
                 stmt->type = 'A';
+                stmt->asn_op = peek->str;
                 stmt->lv = fv;
                 stmt->rv = rhs;
 
@@ -1096,6 +1097,7 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
 //@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
 {
     ast_program_t *prog = alloc(ast_program_t);
+    prog->globs = v_create_vector();
 
     while (!__p_is_eof(ctx)) {
         ast_glob_t *glob = alloc(ast_glob_t);
@@ -1123,6 +1125,8 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             __p_set_err(ctx, "expecting typedef, struct or function def");
             return NULL;
         }
+
+        v_append(prog->globs, (void *) glob);
     }
 
     return prog;

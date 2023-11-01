@@ -2,5 +2,7 @@ int main() {
     string foo = "abc";
     int a = 12;
     a += 17;
+    int[] test = alloc_array(int, 12);
+    test[10];
     return a;
 }

@@ -46,15 +46,16 @@ vec_t *l_tokenize(string code) {
     string R_STRLIT = format("\"(%s)*\"", R_SCHAR);
     string R_CHRLIT = format("'%s'", R_CCHAR);
     string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
-    string R_OP_FST = "!|~|-|\\*|\\.|->|/|%|\\+|<<|>>|<|<=|>=|>|==|!=|&";
+    string R_OP_FST = "!|~|-|\\*|\\.|->|/|%|\\+|<<|>>|<|<=|>=|>|!=|&";
     string R_OP_SND = "^|\\||&&|\\|\\||\\?|:|--|\\+\\+";
     string R_OP = format("%s|%s", R_OP_FST, R_OP_SND);
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
     re_dfa_t *R_SEP = re_parse_regex("[()[\\]{},;]");
+    // treat `==` as an ASN_OP to avoid conflict with `=`
     re_dfa_t *R_ASN_OP = re_parse_regex(
-        "=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
+        "==|=|\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|^=|\\|="
     );
     re_dfa_t *R_WHITE = re_parse_regex("(\\s+)|(//[^\n]*\n)|(/\\*.*\\*/)");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
@@ -64,17 +65,17 @@ vec_t *l_tokenize(string code) {
     int n_token_types = 6;
     re_dfa_t *[] regexs = alloc_array(re_dfa_t *, n_token_types);
     regexs[0] = R_WHITE;
-    regexs[1] = R_OPERATOR;
+    regexs[1] = R_ASN_OP;
     regexs[2] = R_SEP;
-    regexs[3] = R_ASN_OP;
+    regexs[3] = R_OPERATOR;
     regexs[4] = R_LITERAL;
     regexs[5] = R_IDENTIFIER;
 
     char[] token_types = alloc_array(char, n_token_types);
     token_types[0] = 'W';
-    token_types[1] = 'O';
+    token_types[1] = 'A';
     token_types[2] = 'S';
-    token_types[3] = 'A';
+    token_types[3] = 'O';
     token_types[4] = 'L';
     token_types[5] = 'I';
 
@@ -111,6 +112,10 @@ vec_t *l_tokenize(string code) {
         if (token_type == 'I') {
             if (u_is_keyword(matched)) token_type = 'K';
             else if (u_is_literal(matched)) token_type = 'L';
+        }
+
+        if (token_type == 'A' && string_equal(matched, "==")) {
+            token_type = 'O';
         }
 
         if (token_type != 'W') {

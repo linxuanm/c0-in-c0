@@ -48,7 +48,7 @@ int main() {
     args_flag("--warning",  warning);
 
     bool *dump_ast = alloc(bool);
-    args_flag("--warning",  dump_ast);
+    args_flag("--dump-ast",  dump_ast);
 
     args_t args = args_parse();
     if (args->argc == 0) {
