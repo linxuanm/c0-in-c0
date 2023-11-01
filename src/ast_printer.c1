@@ -98,7 +98,7 @@ void __ap_print_exp(ast_exp_t *exp, bool add_paren)
     }
 }
 
-void __ap_print_stmt(ast_stmt_t *stmt, int indent)
+void __ap_print_stmt(ast_stmt_t *stmt, int indent, bool semicolon)
 //@requires stmt != NULL;
 {
     if (stmt->type == 'A') {
@@ -106,37 +106,107 @@ void __ap_print_stmt(ast_stmt_t *stmt, int indent)
         __ap_print_exp(stmt->lv, false);
         printf(" %s ", stmt->asn_op);
         __ap_print_exp(stmt->rv, false);
-        println(";");
+        if (semicolon) printchar(';');
     } else if (stmt->type == 'P') {
         __ap_indent(indent);
         __ap_print_exp(stmt->lv, false);
-        printf("%s;\n", stmt->suffix_op);
+        print(stmt->suffix_op);
+        if (semicolon) printchar(';');
     } else if (stmt->type == 'E') {
         __ap_indent(indent);
         __ap_print_exp(stmt->rv, false);
-        println(";");
+        if (semicolon) printchar(';');
     } else if (stmt->type == 'D') {
         __ap_indent(indent);
         __ap_print_type(stmt->decl_type);
         printf(" %s", stmt->decl_iden);
 
         if (stmt->rv == NULL) {
-            println(";");
+            if (semicolon) printchar(';');
         } else {
             print(" = ");
             __ap_print_exp(stmt->rv, false);
-            println(";");
+            if (semicolon) printchar(';');
         }
     } else if (stmt->type == 'R') {
         __ap_indent(indent);
         print("return ");
         __ap_print_exp(stmt->rv, false);
-        println(";");
+        if (semicolon) printchar(';');
     } else if (stmt->type == 'S' || stmt->type == 'O') {
         __ap_indent(indent);
         print(stmt->type == 'S' ? "assert(" : "error(");
         __ap_print_exp(stmt->rv, false);
-        println(");");
+        printchar(')');
+        if (semicolon) printchar(';');
+    } else if (stmt->type == 'I') {
+        __ap_indent(indent);
+        print("if (");
+        __ap_print_exp(stmt->cond, false);
+        println(") {");
+        for (int i = 0; i < v_length(stmt->blk_a); i++) {
+            __ap_print_stmt(
+                (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, true
+            );
+            println("");
+        }
+        __ap_indent(indent);
+        print("}");
+
+        if (stmt->blk_b != NULL) {
+            println(" else {");
+            for (int i = 0; i < v_length(stmt->blk_b); i++) {
+                __ap_print_stmt(
+                    (ast_stmt_t *) v_get(stmt->blk_b, i), indent + 1, true
+                );
+                println("");
+            }
+            __ap_indent(indent);
+            printchar('}');
+        }
+    } else if (stmt->type == 'W') {
+        __ap_indent(indent);
+        print("while (");
+        __ap_print_exp(stmt->cond, false);
+        println(") {");
+        for (int i = 0; i < v_length(stmt->blk_a); i++) {
+            __ap_print_stmt(
+                (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, true
+            );
+            println("");
+        }
+        __ap_indent(indent);
+        print("}");
+    } else if (stmt->type == 'F') {
+        __ap_indent(indent);
+        print("for (");
+        __ap_print_stmt(stmt->init, 0, false);
+        print("; ");
+        __ap_print_exp(stmt->cond, false);
+        print("; ");
+        __ap_print_stmt(stmt->incr, 0, false);
+        println(") {");
+        for (int i = 0; i < v_length(stmt->blk_a); i++) {
+            __ap_print_stmt(
+                (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, false
+            );
+            println("");
+        }
+        __ap_indent(indent);
+        printchar('}');
+    } else if (stmt->type == 'B') {
+        __ap_indent(indent);
+        println("{");
+        for (int i = 0; i < v_length(stmt->blk_a); i++) {
+            __ap_print_stmt(
+                (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, false
+            );
+            println("");
+        }
+        __ap_indent(indent);
+        print("}");
+    } else {
+        print("<unknown_statement>");
     }
 }
 
@@ -163,7 +233,8 @@ void __ap_print_func(ast_func_t *func)
         println(" {");
 
         for (int i = 0; i < v_length(func->stmts); i++) {
-            __ap_print_stmt((ast_stmt_t *) v_get(func->stmts, i), 1);
+            __ap_print_stmt((ast_stmt_t *) v_get(func->stmts, i), 1, true);
+            println("");
         }
 
         printchar('}');

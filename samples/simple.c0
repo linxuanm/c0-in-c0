@@ -6,5 +6,16 @@ int main() {
     test[10];
     assert(1 == 2);
     error("hello");
+
+
+    {
+        {
+            a = 23;
+        }
+
+        int b = 2;
+        b += 3;
+    }
+
     return a;
 }
