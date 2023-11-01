@@ -1,8 +1,10 @@
 int main() {
     string foo = "abc";
     int a = 12;
-    a += 17;
+    a += 1 == 1 ? 2 : 2 + 3 == 2 ? 1 : 5;
     int[] test = alloc_array(int, 12);
     test[10];
+    assert(1 == 2);
+    error("hello");
     return a;
 }

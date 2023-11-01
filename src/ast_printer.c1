@@ -34,7 +34,7 @@ void __ap_print_exp(ast_exp_t *exp, bool add_paren)
 {
     if (exp->type == 'I') printint(exp->lit_int);
     else if (exp->type == 'C') printchar(exp->lit_chr);
-    else if (exp->type == 'S') print(exp->lit_str);
+    else if (exp->type == 'S') printf("\"%s\"", exp->lit_str);
     else if (exp->type == 'B') printbool(exp->lit_boo);
     else if (exp->type == 'N') print("NULL");
     else if (exp->type == 'D') print(exp->iden);
@@ -78,11 +78,21 @@ void __ap_print_exp(ast_exp_t *exp, bool add_paren)
         __ap_print_exp(exp->left, true);
         if (add_paren) printchar(')');
     } else if (exp->type == 'T') {
-        
+        if (add_paren) printchar('(');
+        __ap_print_exp(exp->cond, true);
+        print(" ? ");
+        __ap_print_exp(exp->left, true);
+        print(" : ");
+        __ap_print_exp(exp->right, true);
+        if (add_paren) printchar(')');
     } else if (exp->type == 'M') {
-        
+        __ap_print_exp(exp->left, true);
+        printchar('.');
+        print(exp->attr);
     } else if (exp->type == 'P') {
-        
+        __ap_print_exp(exp->left, true);
+        print("->");
+        print(exp->attr);
     } else {
         print("<unknown_expression>");
     }
@@ -117,8 +127,16 @@ void __ap_print_stmt(ast_stmt_t *stmt, int indent)
             __ap_print_exp(stmt->rv, false);
             println(";");
         }
-    } else if (stmt->type == 'D') {
-        
+    } else if (stmt->type == 'R') {
+        __ap_indent(indent);
+        print("return ");
+        __ap_print_exp(stmt->rv, false);
+        println(";");
+    } else if (stmt->type == 'S' || stmt->type == 'O') {
+        __ap_indent(indent);
+        print(stmt->type == 'S' ? "assert(" : "error(");
+        __ap_print_exp(stmt->rv, false);
+        println(");");
     }
 }
 
