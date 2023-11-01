@@ -473,7 +473,15 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             exp->type = 'N';
         } else {
             exp->type = 'I';
-            int *parsed = parse_int(lit_str, 10);
+            int *parsed;
+            if (u_is_hex(lit_str)) {
+                parsed = parse_int(
+                    string_sub(lit_str, 2, string_length(lit_str)), 16
+                );
+            } else {
+                parsed = parse_int(lit_str, 10);
+            }
+            assert(parsed != NULL);
             exp->lit_int = *parsed;
         }
 

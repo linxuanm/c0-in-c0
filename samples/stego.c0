@@ -1,0 +1,96 @@
+typedef int pixel_t;
+
+pixel_t[] hide(
+    pixel_t[] cover, pixel_t[] secret, int width, int height, int quality
+)
+//@requires 1 <= quality && quality <= 7;
+//@requires is_valid_imagesize(width, height);
+//@requires width * height == \length(cover);
+//@requires width * height == \length(secret);
+//@ensures \result != cover && \result != secret;
+//@ensures width * height == \length(\result);
+{
+  // bit mask for secret image quality
+  int mask_secret = (0xFF << (8 - quality)) & 0xFF;
+  int mask_cover = (0xFF << quality) & 0xFF;
+  //@assert mask_secret < 0xFF && (mask_secret & 0xFFFFFF00) == 0;
+  //@assert mask_cover < 0xFF && (mask_cover & 0xFFFFFF00) == 0;
+
+  pixel_t[] stego = alloc_array(pixel_t, width * height);
+  for (int row = 0; row < height; row++)
+  //@loop_invariant 0 <= row && row <= height;
+  {
+    for (int col = 0; col < width; col++)
+    //@loop_invariant 0 <= col && col <= width;
+    {
+      //@assert is_valid_pixel(row, col, width, height);
+
+      int idx = get_index(row, col, width, height);
+      pixel_t p_secret = secret[idx];
+      pixel_t p_cover = cover[idx];
+
+      // fetch channels of secret image and mask, then shift to right
+      int a_secret = (get_alpha(p_secret) & mask_secret) >> (8 - quality);
+      int r_secret = (get_red(p_secret) & mask_secret) >> (8 - quality);
+      int g_secret = (get_green(p_secret) & mask_secret) >> (8 - quality);
+      int b_secret = (get_blue(p_secret) & mask_secret) >> (8 - quality);
+
+      // fetch channels of cover image and mask
+      int a_cover = get_alpha(p_cover) & mask_cover;
+      int r_cover = get_red(p_cover) & mask_cover;
+      int g_cover = get_green(p_cover) & mask_cover;
+      int b_cover = get_blue(p_cover) & mask_cover;
+
+      // combine into new pixel color
+      pixel_t result = make_pixel(
+          a_secret | a_cover,
+          r_secret | r_cover,
+          g_secret | g_cover,
+          b_secret | b_cover
+      );
+
+      // put into new image
+      stego[idx] = result;
+    }
+  }
+
+  return stego;
+}
+
+pixel_t[] unhide(pixel_t[] stego, int width, int height, int quality)
+//@requires 1 <= quality && quality <= 7;
+//@requires is_valid_imagesize(width, height);
+//@requires width * height == \length(stego);
+//@ensures \result != stego;
+//@ensures width * height == \length(\result);
+{
+  // bit mask for converting back
+  int mask = (~(0xFF << quality)) & 0xFF;
+
+  pixel_t[] secret = alloc_array(pixel_t, width * height);
+  for (int row = 0; row < height; row++)
+  //@loop_invariant 0 <= row && row <= height;
+  {
+    for (int col = 0; col < width; col++)
+    //@loop_invariant 0 <= col && col <= width;
+    {
+      //@assert is_valid_pixel(row, col, width, height);
+
+      int idx = get_index(row, col, width, height);
+      pixel_t p = stego[idx];
+
+      // extracting secret colors and shifting back
+      int a = (get_alpha(p) & mask) << (8 - quality);
+      int r = (get_red(p) & mask) << (8 - quality);
+      int g = (get_green(p) & mask) << (8 - quality);
+      int b = (get_blue(p) & mask) << (8 - quality);
+
+      // making new color
+      pixel_t result = make_pixel(a, r, g, b);
+
+      secret[idx] = result;
+    }
+  }
+
+  return secret;
+}

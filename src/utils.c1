@@ -61,6 +61,11 @@ bool u_is_native_type(string word) {
 //         || string_equal(word, "|=");
 // }
 
+bool u_is_hex(string num) {
+    return string_length(num) >= 3 && string_charat(num, 0) == '0'
+        && (string_charat(num, 1) == 'x' || string_charat(num, 1) == 'X');
+}
+
 string u_tok_type_to_readable(char type)
 //@requires u_is_token_type(type);
 {
