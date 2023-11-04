@@ -1,0 +1,31 @@
+ast_type_t *t_deref_alias(om_map_t *alias_map, ast_type_t *type)
+//@requires __om_is_valid_tree(alias_map);
+//@requires type != NULL;
+{
+    while (type->type == 'D') {
+        type = (ast_type_t *) om_get_s(alias_map, type->iden);
+    }
+
+    return type;
+}
+
+bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
+//@requires __om_is_valid_tree(alias_map);
+//@requires a != NULL && b != NULL;
+{
+    a = t_deref_alias(alias_map, a);
+    b = t_deref_alias(alias_map, b);
+    
+    //@assert a->type != 'D';
+    //@assert b->type != 'D';
+
+    if (a->type != b->type) return false;
+
+    if (a->type == 'X') {
+        return string_equal(a->iden, b->iden);
+    } else if (a->type == 'A' || a->type == 'P') {
+        return t_match_type(alias_map, a->content, b->content);
+    } else {
+        error("unimplemented type");
+    }
+}

@@ -1,3 +1,5 @@
+#use <util>
+
 int LF(int i, int j, int k) {
   if (i < k) return i;
 

@@ -37,7 +37,7 @@ string compile(string code, cparams_t *params) {
     if (params->dump_ast) {
         ap_print_program(prog);
     }
-
+    
     println("Success");
 
     return "";

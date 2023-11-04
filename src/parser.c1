@@ -3,6 +3,7 @@
 struct p_ctx_t {
     // declarative information
     om_map_t *types;
+    vec_t *libs;
 
     // token tracking
     int n_tokens;
@@ -25,6 +26,7 @@ bool __p_is_ctx(p_ctx_t *ctx) {
     
     if (ctx->n_tokens < 0) return false;
     if (!(0 <= ctx->pc && ctx->pc <= ctx->n_tokens)) return false;
+    if (!v_is_vector(ctx->libs)) return false;
     //@assert ctx->n_tokens <= \length(ctx->tokens);
 
     return true;
@@ -45,6 +47,7 @@ p_ctx_t *p_create_ctx(vec_t *tokens)
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
     ctx->types = om_create_map(&string_ptr_compare);
+    ctx->libs = v_create_vector();
 
     ctx->n_tokens = v_length(tokens);
     ctx->tokens = alloc_array(l_token_t *, ctx->n_tokens);
@@ -1129,6 +1132,18 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             ast_func_t *func = __p_parse_func(ctx);
             if (func == NULL) return NULL;
             glob->func = func;
+        } else if (peek->type == 'U') {
+            __p_next(ctx);
+            string use = peek->str;
+            // assert that `use` contains '<' and '>'
+            int str_pc = 0;
+            while (string_charat(use, str_pc) != '<') str_pc++;
+
+            int begin_index = str_pc + 1;
+            while (string_charat(use, str_pc) != '>') str_pc++;
+
+            string lib_str = string_sub(use, begin_index, str_pc);
+            v_append_string(ctx->libs, lib_str);
         } else {
             __p_set_err(ctx, "expecting typedef, struct or function def");
             return NULL;
@@ -1137,6 +1152,7 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
         v_append(prog->globs, (void *) glob);
     }
 
+    prog->libs = ctx->libs;
     return prog;
 }
 

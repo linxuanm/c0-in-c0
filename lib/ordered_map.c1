@@ -245,7 +245,7 @@ om_node_t *__om_find_node(om_map_t *tree, om_node_t *node, void *key)
     return NULL;
 }
 
-bool __om_has_key(om_map_t *tree, void *key)
+bool om_has_key(om_map_t *tree, void *key)
 //@requires __om_is_valid_tree(tree);
 {
     return __om_find_node(tree, tree->root, key) != NULL;
@@ -679,6 +679,19 @@ bool om_contains_i(om_map_t *tree, int value)
 
 // BEGIN map shorthand
 
+void om_insert(om_map_t *tree, void *key, void *value)
+//@requires __om_is_valid_tree(tree);
+//@ensures __om_is_valid_tree(tree);
+{
+    __om_insert_kv_pair(tree, key, value);
+}
+
+void *om_get(om_map_t *tree, void *key)
+//@requires __om_is_valid_tree(tree);
+{
+    return __om_find_node(tree, tree->root, key)->value;
+}
+
 void om_insert_si(om_map_t *tree, string key, int value)
 //@requires __om_is_valid_tree(tree);
 //@ensures __om_is_valid_tree(tree);
@@ -723,12 +736,28 @@ int om_get_ii(om_map_t *tree, int key)
     return * (int *) __om_find_node(tree, tree->root, (void *) ptr)->value;
 }
 
+void *om_get_s(om_map_t *tree, string key)
+//@requires __om_is_valid_tree(tree);
+{
+    string *k_ptr = alloc(string);
+    *k_ptr = key;
+    return __om_find_node(tree, tree->root, (void *) k_ptr)->value;
+}
+
+void *om_get_i(om_map_t *tree, int key)
+//@requires __om_is_valid_tree(tree);
+{
+    int *k_ptr = alloc(int);
+    *k_ptr = key;
+    return __om_find_node(tree, tree->root, (void *) k_ptr)->value;
+}
+
 bool om_has_s(om_map_t *tree, string value)
 //@requires __om_is_valid_tree(tree);
 {
     string *ptr = alloc(string);
     *ptr = value;
-    return __om_has_key(tree, (void *) ptr);
+    return om_has_key(tree, (void *) ptr);
 }
 
 bool om_has_i(om_map_t *tree, int value)
@@ -736,7 +765,7 @@ bool om_has_i(om_map_t *tree, int value)
 {
     int *ptr = alloc(int);
     *ptr = value;
-    return __om_has_key(tree, (void *) ptr);
+    return om_has_key(tree, (void *) ptr);
 }
 
 bool om_delete_s(om_map_t *tree, string value)

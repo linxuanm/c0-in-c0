@@ -284,8 +284,6 @@ void ap_print_program(ast_program_t *prog)
             __ap_print_struct(glob->struc);
         } else if (glob->type == 'T') {
             __ap_print_alias(glob->alias);
-        } else if (glob->type == 'U') {
-            error("#use not supported yet");
         } else {
             print("<unknown_global_defn>");
         }

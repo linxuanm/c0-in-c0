@@ -44,11 +44,12 @@ vec_t *l_tokenize(string code) {
     string R_SCHAR = l_regex_or(R_ESC, R_NCHAR);
     string R_CCHAR = l_regex_or(R_SCHAR, "\\\\0");
     string R_STRLIT = format("\"(%s)*\"", R_SCHAR);
-    string R_CHRLIT = format("'%s'", R_CCHAR);
+    string R_CHRLIT = format("'(%s)'", R_CCHAR);
     string R_LIT = format("(%s)|(%s)|(%s)", R_NUM, R_CHRLIT, R_STRLIT);
     string R_OP_FST = "!|~|-|\\*|\\.|->|/|%|\\+|<<|>>|<|<=|>=|>|!=|&";
     string R_OP_SND = "^|\\||&&|\\|\\||\\?|:|--|\\+\\+";
     string R_OP = format("%s|%s", R_OP_FST, R_OP_SND);
+    string R_USELIT = "#use[ \f\n\r\t\v]*<[!-=?-~]*>[ \f\n\r\t\v]*\n";
 
     // actual keywords
     re_dfa_t *R_IDENTIFIER = re_parse_regex("[a-zA-Z_][a-zA-Z0-9_]*");
@@ -60,9 +61,10 @@ vec_t *l_tokenize(string code) {
     re_dfa_t *R_WHITE = re_parse_regex("(\\s+)|(//[^\n]*\n)|(/\\*.*\\*/)");
     re_dfa_t *R_LITERAL = re_parse_regex(R_LIT);
     re_dfa_t *R_OPERATOR = re_parse_regex(R_OP);
+    re_dfa_t *R_USE = re_parse_regex(R_USELIT);
 
     // yes ik ugly
-    int n_token_types = 6;
+    int n_token_types = 7;
     re_dfa_t *[] regexs = alloc_array(re_dfa_t *, n_token_types);
     regexs[0] = R_WHITE;
     regexs[1] = R_ASN_OP;
@@ -70,6 +72,7 @@ vec_t *l_tokenize(string code) {
     regexs[3] = R_OPERATOR;
     regexs[4] = R_LITERAL;
     regexs[5] = R_IDENTIFIER;
+    regexs[6] = R_USE;
 
     char[] token_types = alloc_array(char, n_token_types);
     token_types[0] = 'W';
@@ -78,6 +81,7 @@ vec_t *l_tokenize(string code) {
     token_types[3] = 'O';
     token_types[4] = 'L';
     token_types[5] = 'I';
+    token_types[6] = 'U';
 
     // tokenizer position init
     int row = 1;
