@@ -1,0 +1,20 @@
+#use <conio>
+
+struct cf_node_t {
+    int id;
+
+    vec_t *stmts; // [ssa_stmt_t *]
+    vec_t *prev_nodes; // [cf_node_t *]
+
+    // variables defined in this block
+    om_map_t *def_vars; // string -> ssa_var_t *
+
+    struct cf_node_t *next; // normal successor/if node
+    struct cf_node_t *next_alt; // else node, can be NULL
+};
+typedef struct cf_node_t cf_node_t;
+
+struct cf_graph_t {
+    vec_t *nodes;
+
+};

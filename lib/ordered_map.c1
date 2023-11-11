@@ -73,6 +73,11 @@ bool __om_no_consecutive_red(om_node_t *node, bool is_parent_red) {
         && __om_no_consecutive_red(node->right, node->is_red);
 }
 
+int __om_n_nodes(om_node_t *node) {
+    if (node == NULL) return 0;
+    return 1 + __om_n_nodes(node->left) + __om_n_nodes(node->right);
+}
+
 bool __om_is_valid_tree(om_map_t *tree)
 {
     if (tree == NULL) return false;
@@ -86,7 +91,8 @@ bool __om_is_valid_tree(om_map_t *tree)
     // no consecutive red nodes && equal-size black path
     return __om_fully_connected(tree->root, NULL)
         && __om_no_consecutive_red(tree->root, false)
-        && __om_valid_node_height(tree->root) != -1;
+        && __om_valid_node_height(tree->root) != -1
+        && __om_n_nodes(tree->root) == tree->size;
 }
 
 // END contract functions
@@ -549,6 +555,56 @@ bool __om_delete_key(om_map_t *tree, void *key)
 int __om_max_depth(om_node_t *node) {
     if (node == NULL) return 0;
     return max(__om_max_depth(node->left), __om_max_depth(node->right)) + 1;
+}
+
+int __om_collect_keys(om_node_t *node, void *[] output, int curr_idx)
+//@requires curr_idx <= \length(output);
+//@ensures \result >= curr_idx;
+{
+    int idx = curr_idx;
+    if (node == NULL) return idx;
+
+    idx = __om_collect_keys(node->left, output, idx);
+    output[idx] = node->key;
+    idx++;
+    idx = __om_collect_keys(node->right, output, idx);
+
+    return idx;
+}
+
+void *[] om_get_keys(om_map_t *tree)
+//@requires __om_is_valid_tree(tree);
+//@ensures \length(\result) == tree->size;
+{
+    void *[] keys = alloc_array(void *, tree->size);
+    __om_collect_keys(tree->root, keys, 0);
+    return keys;
+}
+
+int[] om_get_keys_int(om_map_t *tree)
+//@requires __om_is_valid_tree(tree);
+//@ensures \length(\result) == tree->size;
+{
+    void *[] keys = om_get_keys(tree);
+    int[] output = alloc_array(int, tree->size);
+    for (int i = 0; i < tree->size; i++) {
+        output[i] = * (int *) keys[i];
+    }
+
+    return output;
+}
+
+string[] om_get_keys_string(om_map_t *tree)
+//@requires __om_is_valid_tree(tree);
+//@ensures \length(\result) == tree->size;
+{
+    void *[] keys = om_get_keys(tree);
+    string[] output = alloc_array(string, tree->size);
+    for (int i = 0; i < tree->size; i++) {
+        output[i] = * (string *) keys[i];
+    }
+
+    return output;
 }
 
 // END misc

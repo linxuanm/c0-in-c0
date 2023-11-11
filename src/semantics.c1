@@ -1,0 +1,121 @@
+struct s_warn_t {
+    int row;
+    string msg;
+};
+typedef struct s_warn_t s_warn_t;
+
+struct s_var_info_t {
+    ast_type_t *type;
+    bool used;
+};
+typedef struct s_var_info_t s_var_info_t;
+
+struct s_func_info_t {
+    bool implemented;
+
+    ast_type_t *ret_type;
+    vec_t *param_types; // [ast_type_t *]
+
+    // TODO
+    bool pure;
+};
+typedef struct s_func_info_t s_func_info_t;
+
+struct s_scope_t {
+    om_map_t *var_map; // string -> s_var_info_t *
+};
+typedef struct s_scope_t s_scope_t;
+
+// TODO: pureness checking
+struct s_ctx_t {
+
+    // global
+    om_map_t *alias_map; // string -> ast_type_t *
+    om_map_t *strct_map; // string -> s_strct_info_t *
+    om_map_t *func_map; // string -> s_func_info_t *
+
+    // local
+    s_func_info_t *curr_func;
+    vec_t *var_stack;
+    bool reachable;
+    int curr_row;
+
+    // declared types/functions that must be defined
+    // only functions need to be recorded as structs cannot be used outside of
+    // pure type checking prior to being defined
+    vec_t *required_funcs; // [string]
+
+    // errors
+    bool err;
+    int err_row;
+    string err_msg;
+    vec_t *warnings;
+
+    // ssa output
+};
+typedef struct s_ctx_t s_ctx_t;
+
+// BEGIN contracts
+
+bool s_is_ctx(s_ctx_t *ctx) {
+    return ctx != NULL
+        && __om_is_valid_tree(ctx->alias_map)
+        && __om_is_valid_tree(ctx->strct_map)
+        && __om_is_valid_tree(ctx->func_map);
+}
+
+bool s_is_local_ctx(s_ctx_t *ctx) {
+    return s_is_ctx(ctx) && ctx->curr_func != NULL
+        && v_is_vector(ctx->var_stack);
+}
+
+// END contracts
+
+// BEGIN helper functions
+
+void __s_set_err(s_ctx_t *ctx, string msg)
+//@requires s_is_ctx(ctx);
+//@requires !ctx->err;
+{
+    ctx->err = true;
+    ctx->err_row = ctx->curr_row;
+    ctx->err_msg = msg;
+}
+
+s_func_info_t *s_lookup_func(s_ctx_t *ctx, string name)
+//@requires s_is_ctx(ctx);
+{
+    s_func_info_t *res = (s_func_info_t *) om_get_s(ctx->func_map, name);
+    if (res == NULL) {
+        __s_set_err(ctx, format("function \"%s\" is not defined", name));
+        return NULL;
+    }
+
+    return res;
+}
+
+s_var_info_t *s_lookup_var(s_ctx_t *ctx, string name)
+//@requires s_is_local_ctx(ctx);
+{
+    for (int i = v_length(ctx->var_stack) - 1; i > -1; i--) {
+        om_map_t *scope = (om_map_t *) v_get(ctx->var_stack, i);
+        s_var_info_t *info = (s_var_info_t *) om_get_s(scope, name);
+
+        if (info != NULL) return info;
+    }
+
+    __s_set_err(ctx, format("variable \"%s\" is not defined", name));
+    return NULL;
+}
+
+// END helper functions
+
+// BEGIN pass
+
+s_ctx_t *s_code_pass(ast_program_t *prog)
+//@requires prog != NULL;
+{
+    return NULL;
+}
+
+// END pass

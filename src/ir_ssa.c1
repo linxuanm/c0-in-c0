@@ -1,0 +1,23 @@
+#use <string>
+
+struct ssa_var_t {
+    string iden;
+    int version;
+};
+typedef struct ssa_var_t ssa_var_t;
+
+struct ssa_stmt_t {
+    /*
+        - M: move
+        - A: assign
+     */
+    char type;
+
+};
+typedef struct ssa_stmt_t ssa_stmt_t;
+
+string ssa_print_var(ssa_var_t *var)
+//@requires var != NULL;
+{
+    return format("%s_%d", var->iden, var->version);
+}
