@@ -16,5 +16,4 @@ typedef struct cf_node_t cf_node_t;
 
 struct cf_graph_t {
     vec_t *nodes;
-
 };

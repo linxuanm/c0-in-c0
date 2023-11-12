@@ -1,5 +1,8 @@
 #use <string>
 
+// mainly used to keep track of variable version increments
+typedef om_map_t ssa_names_t;
+
 struct ssa_var_t {
     string iden;
     int version;
@@ -8,16 +11,70 @@ typedef struct ssa_var_t ssa_var_t;
 
 struct ssa_stmt_t {
     /*
-        - M: move
-        - A: assign
+        - M: move `a3 <- a2`
+        - B: bin-op `a3 <- a1 + a2`
+        - U: uni-op `a3 <- -a2`
+        - P: phi `a3 <- \phi(a1, a2)`
+        - F: function call `a3 <- foo(a1, a2)`
+        - I: if
      */
     char type;
+    string operator;
 
+    // `M`, `B`, `U`, `P`, `F`
+    ssa_var_t *lhs;
+
+    // `P`, `F`
+    vec_t *params; // [ssa_var_t *]
+    // `F`
+    string func_name;
 };
 typedef struct ssa_stmt_t ssa_stmt_t;
+
+int __ssa_var_compare(void *a, void *b) {
+    ssa_var_t *fst = (ssa_var_t *) a;
+    ssa_var_t *snd = (ssa_var_t *) b;
+
+    int name_cmp = string_compare(fst->iden, snd->iden);
+    if (name_cmp != 0) return name_cmp;
+
+    if (fst->version == snd->version) return 0;
+    if (fst->version > snd->version) return 1;
+    return -1;
+}
 
 string ssa_print_var(ssa_var_t *var)
 //@requires var != NULL;
 {
     return format("%s_%d", var->iden, var->version);
+}
+
+om_map_t *ssa_get_use_set(ssa_stmt_t *stmt) {
+    om_map_t *use_vars = om_create_map(&__ssa_var_compare);
+
+    for (int i = 0; i < v_length(stmt->params); i++) {
+        __om_insert_kv_pair(use_vars, v_get(stmt->params, i), NULL);
+    }
+
+    return use_vars;
+}
+
+ssa_var_t *__ssa_get_unlabeled_var(string name) {
+    ssa_var_t *var = alloc(ssa_var_t);
+    var->iden = name;
+    return var;
+}
+
+ssa_var_t *__ssa_get_labeled_var(ssa_names_t *ctx, string name) {
+    if (!om_has_s(ctx, name)) {
+        om_insert_si(ctx, name, 0);
+    }
+
+    int version = om_get_si(ctx, name);
+    om_insert_si(ctx, name, version + 1);
+    ssa_var_t *var = alloc(ssa_var_t);
+    var->iden = name;
+    var->version = version;
+
+    return var;
 }

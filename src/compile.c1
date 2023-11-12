@@ -17,7 +17,8 @@ void c_debug_tokens(vec_t *tokens) {
     }
 }
 
-string compile(string code, cparams_t *params) {
+string compile(string[] codes, cparams_t *params) {
+    // TODO: add file info to tokens
     vec_t *tokens = l_tokenize(code);
     if (tokens == NULL) return "";
 

@@ -52,6 +52,7 @@ struct s_ctx_t {
     vec_t *warnings;
 
     // ssa output
+    om_map_t *func_cfgs;
 };
 typedef struct s_ctx_t s_ctx_t;
 
@@ -112,7 +113,7 @@ s_var_info_t *s_lookup_var(s_ctx_t *ctx, string name)
 
 // BEGIN pass
 
-s_ctx_t *s_code_pass(ast_program_t *prog)
+s_ctx_t *s_semantics_pass(ast_program_t *prog)
 //@requires prog != NULL;
 {
     return NULL;
