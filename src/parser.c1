@@ -1,6 +1,9 @@
 #use <parse>
 
 struct p_ctx_t {
+    // file info
+    string file_path;
+
     // declarative information
     om_map_t *types;
     vec_t *libs;
@@ -13,8 +16,7 @@ struct p_ctx_t {
     // error handling (propagate instead of throwing)
     bool err;
     string err_msg;
-    int err_row;
-    int err_col;
+    position_t *err_pos;
 };
 typedef struct p_ctx_t p_ctx_t;
 
@@ -80,13 +82,15 @@ void __p_set_err(p_ctx_t *ctx, string msg)
     ctx->err = true;
     ctx->err_msg = msg;
 
+    ctx->err_pos = alloc(position_t);
+    ctx->err_pos->file = ctx->file_path;
     if (__p_is_eof(ctx)) {
-        ctx->err_row = -1;
-        ctx->err_col = -1;
+        ctx->err_pos->row = -1;
+        ctx->err_pos->col = -1;
     } else {
         l_token_t *curr = __p_peek(ctx);
-        ctx->err_row = curr->row;
-        ctx->err_col = curr->col;
+        ctx->err_pos->row = curr->row;
+        ctx->err_pos->col = curr->col;
     }
 }
 
@@ -97,8 +101,10 @@ void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
 {
     ctx->err = true;
     ctx->err_msg = msg;
-    ctx->err_row = tok->row;
-    ctx->err_col = tok->col;
+    ctx->err_pos = alloc(position_t);
+    ctx->err_pos->file = ctx->file_path;
+    ctx->err_pos->row = tok->row;
+    ctx->err_pos->col = tok->col;
 }
 
 void __p_eof_err(p_ctx_t *ctx)
@@ -1161,27 +1167,26 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
 struct p_result_t {
     bool successful;
     string err_msg;
-    int err_row;
-    int err_col;
+    position_t *err_pos;
 
     ast_program_t *prog;
 };
 typedef struct p_result_t p_result_t;
 
-p_result_t *p_parse_tokens(vec_t *tokens)
+p_result_t *p_parse_tokens(vec_t *tokens, string code_path)
 //@requires v_is_vector(tokens);
 //@ensures \result != NULL;
 {
     p_result_t *result = alloc(p_result_t);
 
     p_ctx_t *ctx = p_create_ctx(tokens);
+    ctx->file_path = code_path;
     ast_program_t *prog = __p_parse_program(ctx);
 
     if (prog == NULL) {
         result->successful = false;
         result->err_msg = ctx->err_msg;
-        result->err_row = ctx->err_row;
-        result->err_col = ctx->err_col;
+        result->err_pos = ctx->err_pos;
     } else {
         result->successful = true;
         result->prog = prog;

@@ -126,6 +126,7 @@ vec_t *l_tokenize(string code) {
             l_token_t *token = alloc(l_token_t);
             token->type = token_type;
             token->str = matched;
+
             token->row = row;
             token->col = col;
 

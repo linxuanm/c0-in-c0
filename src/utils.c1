@@ -1,5 +1,18 @@
 #use <string>
 
+struct position_t {
+    string file;
+    int row;
+    int col;
+};
+typedef struct position_t position_t;
+
+struct src_code_t {
+    string path;
+    string code;
+};
+typedef struct src_code_t src_code_t;
+
 bool u_is_keyword(string word) {
     return string_equal(word, "int")
         || string_equal(word, "bool")

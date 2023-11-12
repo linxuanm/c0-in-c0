@@ -17,10 +17,14 @@ void c_debug_tokens(vec_t *tokens) {
     }
 }
 
-string compile(string[] codes, cparams_t *params) {
-    // TODO: add file info to tokens
-    vec_t *tokens = l_tokenize(code);
-    if (tokens == NULL) return "";
+string compile(vec_t *src_codes, cparams_t *params) {
+    vec_t *tokenized_files = v_create_vector();
+    for (int i = 0; i < v_length(src_codes); i++) {
+        src_code_t *code = (src_code_t *) v_get(sec_codes, i);
+        // TODO
+        vec_t *tokens = l_tokenize(code);
+        if (tokens == NULL) return "";
+    }
 
     // c_debug_tokens(tokens);
 

@@ -2,13 +2,19 @@
 #use <conio>
 #use <string>
 
-void compile_file(string[] files, int n_files, cparams_t *params) {
-    string[] codes = alloc_array(string, n_files);
+void compile_files(string[] files, int n_files, cparams_t *params) {
+    vec_t *src_codes = v_create_vector();
     for (int i = 0; i < n_files; i++) {
-        codes[i] = f_read_file(files[i]);
+        string path = files[i];
+        string code = f_read_file(file);
+        src_code_t *info = alloc(src_code_t);
+        info->path = path;
+        info->code = code;
+
+        v_append(src_codes, (void *) info);
     }
     
-    string res = compile(codes, params);
+    string res = compile(src_codes, params);
 
     
 }
@@ -74,7 +80,7 @@ int main() {
         params->warining = *warning;
         params->dump_ast = *dump_ast;
         
-        compile_file(args->argv, args->argc, params);
+        compile_files(args->argv, args->argc, params);
     }
 
     return 0;
