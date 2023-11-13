@@ -1,12 +1,5 @@
 #use <string>
 
-struct position_t {
-    string file;
-    int row;
-    int col;
-};
-typedef struct position_t position_t;
-
 struct src_code_t {
     string path;
     string code;

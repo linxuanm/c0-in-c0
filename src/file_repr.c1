@@ -1,0 +1,22 @@
+struct fr_pos_t {
+    int row;
+    int col;
+};
+typedef struct fr_pos_t fr_pos_t;
+
+struct fr_file_t {
+    // compilation artifacts
+    string path;
+    string prog;
+    vec_t *tokens;
+    ast_program_t *ast;
+};
+typedef struct fr_file_t fr_file_t;
+
+fr_pos_t *fr_create_pos(int row, int col) {
+    fr_pos_t *pos = alloc(fr_pos_t);
+    pos->row = row;
+    pos->col = col;
+
+    return pos;
+}

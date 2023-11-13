@@ -3,13 +3,13 @@
 #use <string>
 
 void compile_files(string[] files, int n_files, cparams_t *params) {
-    vec_t *src_codes = v_create_vector();
+    vec_t *file_reprs = v_create_vector(); // [fr_file_t *]
     for (int i = 0; i < n_files; i++) {
         string path = files[i];
         string code = f_read_file(file);
-        src_code_t *info = alloc(src_code_t);
-        info->path = path;
-        info->code = code;
+        fr_file_t *repr = alloc(fr_file_t);
+        repr->path = path;
+        repr->prog = code;
 
         v_append(src_codes, (void *) info);
     }

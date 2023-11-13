@@ -14,9 +14,7 @@ struct p_ctx_t {
     l_token_t *[] tokens;
 
     // error handling (propagate instead of throwing)
-    bool err;
-    string err_msg;
-    position_t *err_pos;
+    e_error_t *err;
 };
 typedef struct p_ctx_t p_ctx_t;
 
@@ -76,41 +74,31 @@ bool __p_can_be_var(string var, p_ctx_t *ctx);
 
 void __p_set_err(p_ctx_t *ctx, string msg)
 //@requires __p_is_ctx(ctx);
-//@requires !ctx->err;
-//@ensures ctx->err;
+//@requires !e_has_err(ctx->err);
+//@ensures e_has_err(ctx->err);
 {
-    ctx->err = true;
-    ctx->err_msg = msg;
-
-    ctx->err_pos = alloc(position_t);
-    ctx->err_pos->file = ctx->file_path;
-    if (__p_is_eof(ctx)) {
-        ctx->err_pos->row = -1;
-        ctx->err_pos->col = -1;
-    } else {
+    fr_pos_t *pos = NULL;
+    if (!__p_is_eof(ctx)) {
         l_token_t *curr = __p_peek(ctx);
-        ctx->err_pos->row = curr->row;
-        ctx->err_pos->col = curr->col;
+        pos = curr->pos;
     }
+
+    e_error_t *err = e_create_error(msg, pos);
+    ctx->err = err;
 }
 
 void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
 //@requires __p_is_ctx(ctx);
-//@requires !ctx->err;
-//@ensures ctx->err;
+//@requires !e_has_err(ctx->err);
+//@ensures e_has_err(ctx->err);
 {
-    ctx->err = true;
-    ctx->err_msg = msg;
-    ctx->err_pos = alloc(position_t);
-    ctx->err_pos->file = ctx->file_path;
-    ctx->err_pos->row = tok->row;
-    ctx->err_pos->col = tok->col;
+    ctx->err = e_create_error(msg, tok->pos);
 }
 
 void __p_eof_err(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@requires !ctx->err;
-//@ensures ctx->err;
+//@requires !e_has_err(ctx->err);
+//@ensures e_has_err(ctx->err);
 {
     __p_set_err(ctx, "unexpected end of file");
 }
@@ -122,7 +110,7 @@ bool __p_match(l_token_t *tok, char type, string word) {
 bool __p_expect(char type, string word, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires u_is_token_type(type);
-//@ensures \result && !ctx->err || !\result && ctx->err;
+//@ensures \result && !e_has_err(ctx->err) || !\result && e_has_err(ctx->err);
 {
     if (__p_is_eof(ctx)) {
         __p_eof_err(ctx);
@@ -148,14 +136,14 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
 
 bool __p_expect_kw(string kwd, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@ensures \result && !ctx->err || !\result && ctx->err;
+//@ensures \result && !e_has_err(ctx->err) || !\result && e_has_err(ctx->err);
 {
     return __p_expect('K', kwd, ctx);
 }
 
 bool __p_expect_sep(string sep, p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@ensures \result && !ctx->err || !\result && ctx->err;
+//@ensures \result && !e_has_err(ctx->err) || !\result && e_has_err(ctx->err);
 {
     return __p_expect('S', sep, ctx);
 }
@@ -214,8 +202,8 @@ void __p_debug_pos(p_ctx_t *ctx)
         "%c %s %d %d\n",
         __p_peek(ctx)->type,
         __p_peek(ctx)->str,
-        __p_peek(ctx)->row,
-        __p_peek(ctx)->col
+        __p_peek(ctx)->pos->row,
+        __p_peek(ctx)->pos->col
     );
 }
 
@@ -379,7 +367,9 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_type(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     ast_type_t *type = alloc(ast_type_t);
     l_token_t *tok = __p_next(ctx);
@@ -448,7 +438,9 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     ast_exp_t *exp = alloc(ast_exp_t);
     l_token_t *tok = __p_next(ctx);
@@ -600,7 +592,9 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     return __p_parse_exp_by_level(ctx, 13);
 }
@@ -612,7 +606,9 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     int n_ops = num_tokens(raw_operators);
     string[] ops = parse_tokens(raw_operators);
@@ -642,7 +638,9 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
 //@requires 0 <= level && level <= 13;
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     if (level == 0) {
         return __p_parse_exp_atom(ctx);
@@ -743,7 +741,9 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_simp(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     ast_stmt_t *stmt = alloc(ast_stmt_t);
     if (__p_fset_exp(ctx)) {
@@ -844,7 +844,9 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_stmt(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     l_token_t *peek = __p_peek(ctx);
     ast_stmt_t *stmt;
@@ -946,7 +948,9 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 
 vec_t *__p_expect_block(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     if (!__p_expect_sep("{", ctx)) return NULL;
     vec_t *stmts = v_create_vector();
@@ -970,7 +974,9 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_type(ctx);
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     ast_func_t *func = alloc(ast_func_t);
     func->param_types = v_create_vector();
@@ -1036,7 +1042,9 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "typedef");
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     __p_next(ctx);
     ast_alias_t *alias = alloc(ast_alias_t);
@@ -1062,7 +1070,9 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "struct");
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     __p_next(ctx);
     ast_struct_t *strct = alloc(ast_struct_t);
@@ -1167,14 +1177,18 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
 struct p_result_t {
     bool successful;
     string err_msg;
-    position_t *err_pos;
+    fr_pos_t *err_pos;
 
     ast_program_t *prog;
 };
 typedef struct p_result_t p_result_t;
 
-p_result_t *p_parse_tokens(vec_t *tokens, string code_path)
-//@requires v_is_vector(tokens);
+/*
+    Parsing each file updates the declared types that the parse has accumulated
+    so far. `type_ctx` is mutated each time.
+ */
+void p_parse_file(fr_file_t *file, om_map_t *type_ctx)
+//@requires v_is_vector(file->tokens);
 //@ensures \result != NULL;
 {
     p_result_t *result = alloc(p_result_t);
@@ -1184,15 +1198,17 @@ p_result_t *p_parse_tokens(vec_t *tokens, string code_path)
     ast_program_t *prog = __p_parse_program(ctx);
 
     if (prog == NULL) {
-        result->successful = false;
-        result->err_msg = ctx->err_msg;
-        result->err_pos = ctx->err_pos;
-    } else {
-        result->successful = true;
-        result->prog = prog;
-    }
+        file->err = true;
+        file->err_msg = ctx->err_msg;
+        file->err_pos = ctx->err_pos;
 
-    return result;
+        return NULL;
+    } else {
+        file->err = false;
+        file->ast = prog;
+
+        return ctx->types;
+    }
 }
 
 // END parsing stage
