@@ -1,5 +1,4 @@
 #use <string>
-//#use "regex.c0"
 
 struct l_token_t {
     /*
@@ -25,7 +24,7 @@ string l_regex_or(string a, string b) {
     Tokenizes the given string and populates the `tokens` field of the file
     representation.
 */
-bool l_tokenize(fr_file_t *repr) {
+e_error_t *l_tokenize(fr_file_t *repr) {
     int src_ptr = 0;
     vec_t *tokens = v_create_vector();
 
@@ -100,12 +99,7 @@ bool l_tokenize(fr_file_t *repr) {
 
         // lexer failed
         if (token_size == 0) {
-            string details = format("(Line %d, Col %d)", row, col);
-            printf(
-                "Lexer error: invalid token at character position %d %s\n",
-                src_ptr, details
-            );
-            return false;
+            return e_create_error("invalid token", fr_create_pos(row, col));
         }
 
         string matched = string_sub(code, src_ptr, src_ptr + token_size);
@@ -143,5 +137,5 @@ bool l_tokenize(fr_file_t *repr) {
     }
 
     repr->tokens = tokens;
-    return true;
+    return NULL;
 }

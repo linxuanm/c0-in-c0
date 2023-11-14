@@ -42,11 +42,11 @@ bool __p_is_eof(p_ctx_t *ctx)
 
 // BEGIN constructors
 
-p_ctx_t *p_create_ctx(vec_t *tokens)
+p_ctx_t *p_create_ctx(vec_t *tokens, om_map_t *type_ctx)
 //@ensures __p_is_ctx(\result);
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
-    ctx->types = om_create_map(&string_ptr_compare);
+    ctx->types = type_ctx;
     ctx->libs = v_create_vector();
 
     ctx->n_tokens = v_length(tokens);
@@ -1121,7 +1121,9 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 
 ast_program_t *__p_parse_program(p_ctx_t *ctx)
 //@requires ctx != NULL;
-//@ensures \result == NULL && ctx->err || \result != NULL && !ctx->err;
+/*@ensures \result == NULL && e_has_err(ctx->err)
+        || \result != NULL && !e_has_err(ctx->err);
+@*/
 {
     ast_program_t *prog = alloc(ast_program_t);
     prog->globs = v_create_vector();
@@ -1174,41 +1176,23 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
 
 // BEGIN parsing stage
 
-struct p_result_t {
-    bool successful;
-    string err_msg;
-    fr_pos_t *err_pos;
-
-    ast_program_t *prog;
-};
-typedef struct p_result_t p_result_t;
+om_map_t *p_empty_type_ctx() {
+    return om_create_map(&string_ptr_compare);
+}
 
 /*
     Parsing each file updates the declared types that the parse has accumulated
     so far. `type_ctx` is mutated each time.
  */
-void p_parse_file(fr_file_t *file, om_map_t *type_ctx)
+e_error_t *p_parse_file(fr_file_t *file, om_map_t *type_ctx)
+//@requires file != NULL;
 //@requires v_is_vector(file->tokens);
-//@ensures \result != NULL;
 {
-    p_result_t *result = alloc(p_result_t);
+    p_ctx_t *ctx = p_create_ctx(file->tokens, type_ctx);
+    ctx->types = type_ctx;
+    file->ast = __p_parse_program(ctx);
 
-    p_ctx_t *ctx = p_create_ctx(tokens);
-    ctx->file_path = code_path;
-    ast_program_t *prog = __p_parse_program(ctx);
-
-    if (prog == NULL) {
-        file->err = true;
-        file->err_msg = ctx->err_msg;
-        file->err_pos = ctx->err_pos;
-
-        return NULL;
-    } else {
-        file->err = false;
-        file->ast = prog;
-
-        return ctx->types;
-    }
+    return ctx->err;
 }
 
 // END parsing stage
