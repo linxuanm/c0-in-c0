@@ -10,6 +10,9 @@ struct fr_file_t {
     string prog;
     vec_t *tokens;
     ast_program_t *ast;
+
+    // additional info
+    vec_t *libs;
 };
 typedef struct fr_file_t fr_file_t;
 

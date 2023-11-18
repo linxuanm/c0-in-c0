@@ -27,6 +27,7 @@ string l_regex_or(string a, string b) {
 e_error_t *l_tokenize(fr_file_t *repr) {
     int src_ptr = 0;
     vec_t *tokens = v_create_vector();
+    repr->libs = v_create_vector();
 
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
@@ -114,7 +115,19 @@ e_error_t *l_tokenize(fr_file_t *repr) {
             token_type = 'O';
         }
 
-        if (token_type != 'W') {
+        if (token_type == 'U') {
+            // assert that `use` contains '<' and '>'
+            int str_pc = 0;
+            while (string_charat(matched, str_pc) != '<') str_pc++;
+
+            int begin_index = str_pc + 1;
+            while (string_charat(matched, str_pc) != '>') str_pc++;
+
+            string lib_str = string_sub(matched, begin_index, str_pc);
+            v_append_string(repr->libs, lib_str);
+        }
+
+        if (token_type != 'W' && token_type != 'U') {
             l_token_t *token = alloc(l_token_t);
             token->type = token_type;
             token->str = matched;

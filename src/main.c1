@@ -15,6 +15,13 @@ void compile_files(string[] files, int n_files, cparams_t *params) {
     }
     
     c_result_t *res = compile(file_reprs, params);
+
+    if (e_has_err(res->err)) {
+        string msg = e_format(res->err, res->failed_file);
+        print(msg);
+
+        return;
+    }
 }
 
 void print_padded(string s, int pad) {

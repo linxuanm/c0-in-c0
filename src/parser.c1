@@ -1150,18 +1150,6 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             ast_func_t *func = __p_parse_func(ctx);
             if (func == NULL) return NULL;
             glob->func = func;
-        } else if (peek->type == 'U') {
-            __p_next(ctx);
-            string use = peek->str;
-            // assert that `use` contains '<' and '>'
-            int str_pc = 0;
-            while (string_charat(use, str_pc) != '<') str_pc++;
-
-            int begin_index = str_pc + 1;
-            while (string_charat(use, str_pc) != '>') str_pc++;
-
-            string lib_str = string_sub(use, begin_index, str_pc);
-            v_append_string(ctx->libs, lib_str);
         } else {
             __p_set_err(ctx, "expecting typedef, struct or function def");
             return NULL;

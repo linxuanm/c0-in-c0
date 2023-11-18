@@ -1,0 +1,5 @@
+int main() {
+    linked_list[] list;
+    do_stuff();
+    return 0;
+}

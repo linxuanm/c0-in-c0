@@ -45,14 +45,7 @@ struct s_ctx_t {
     // pure type checking prior to being defined
     vec_t *required_funcs; // [string]
 
-    // errors
-    bool err;
-    int err_row;
-    string err_msg;
-    vec_t *warnings;
-
-    // ssa output
-    om_map_t *func_cfgs;
+    e_error_t *err;
 };
 typedef struct s_ctx_t s_ctx_t;
 
@@ -76,11 +69,9 @@ bool s_is_local_ctx(s_ctx_t *ctx) {
 
 void __s_set_err(s_ctx_t *ctx, string msg)
 //@requires s_is_ctx(ctx);
-//@requires !ctx->err;
+//@requires !e_has_err(ctx->err);
 {
-    ctx->err = true;
-    ctx->err_row = ctx->curr_row;
-    ctx->err_msg = msg;
+    ctx->err = e_create_error(msg, NULL);
 }
 
 s_func_info_t *s_lookup_func(s_ctx_t *ctx, string name)

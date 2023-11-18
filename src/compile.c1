@@ -51,6 +51,14 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
     if (params->dump_ast) {
         for (int i = 0; i < v_length(file_reprs); i++) {
             fr_file_t *file = (fr_file_t *) v_get(file_reprs, i);
+
+            printf("// AST OF FILE \"%s\"\n\n", file->path);
+
+            for (int l = 0; l < v_length(file->libs); l++) {
+                printf("#use <%s>\n", * (string *) v_get(file->libs, l));
+            }
+            if (v_length(file->libs) != 0) println("");
+
             ap_print_program(file->ast);
         }
     }
