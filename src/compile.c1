@@ -12,6 +12,9 @@ struct c_result_t {
 
     e_error_t *err;
     string failed_file;
+
+    // when ran in debug/print mode and no target code is created
+    bool no_output;
 };
 typedef struct c_result_t c_result_t;
 
@@ -19,6 +22,12 @@ c_result_t *__c_fail(e_error_t *err, string failed_file) {
     c_result_t *res = alloc(c_result_t);
     res->err = err;
     res->failed_file = failed_file;
+    return res;
+}
+
+c_result_t *__c_exit() {
+    c_result_t *res = alloc(c_result_t);
+    res->no_output = true;
     return res;
 }
 
@@ -61,6 +70,8 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
 
             ap_print_program(file->ast);
         }
+
+        return __c_exit();
     }
     
     println("Success");

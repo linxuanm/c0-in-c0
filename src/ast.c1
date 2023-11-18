@@ -1,3 +1,9 @@
+struct fr_pos_t {
+    int row;
+    int col;
+};
+typedef struct fr_pos_t fr_pos_t;
+
 struct ast_type_t {
     /*
         - I: integer
@@ -17,6 +23,9 @@ struct ast_type_t {
 
     // 'A', 'P'
     struct ast_type_t *content;
+
+    // positional information
+    fr_pos_t *pos;
 };
 typedef struct ast_type_t ast_type_t;
 

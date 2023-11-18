@@ -1,9 +1,3 @@
-struct fr_pos_t {
-    int row;
-    int col;
-};
-typedef struct fr_pos_t fr_pos_t;
-
 struct fr_file_t {
     // compilation artifacts
     string path;

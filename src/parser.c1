@@ -162,6 +162,7 @@ l_token_t *__p_expect_id_tok(p_ctx_t *ctx, bool is_var)
             format("expecting variable/function name, not \"%s\"", tok->str),
             tok
         );
+        return NULL;
     }
     return tok;
 }
@@ -335,27 +336,47 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx);
 ast_stmt_t *__p_parse_simp(p_ctx_t *ctx);
 
 ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
-    if (!__p_fset_exp(ctx)) __p_set_err(ctx, "expecting expression");
+    if (!__p_fset_exp(ctx)) {
+        __p_set_err(ctx, "expecting expression");
+        return NULL;
+    }
+
     return __p_parse_exp(ctx);
 }
 
 ast_type_t *__p_expect_type(p_ctx_t *ctx) {
-    if (!__p_fset_type(ctx)) __p_set_err(ctx, "expecting type");
+    if (!__p_fset_type(ctx)) {
+        __p_set_err(ctx, "expecting type");
+        return NULL;    
+    }
+
     return __p_parse_type(ctx);
 }
 
 ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
-    if (!__p_fset_stmt(ctx)) __p_set_err(ctx, "expecting statement");
+    if (!__p_fset_stmt(ctx)) {
+        __p_set_err(ctx, "expecting statement");
+        return NULL;
+    }
+
     return __p_parse_stmt(ctx);
 }
 
 ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
-    if (!__p_fset_exp(ctx)) __p_set_err(ctx, "expecting expression");
+    if (!__p_fset_exp(ctx)) {
+        __p_set_err(ctx, "expecting expression");
+        return NULL;
+    }
+
     return __p_parse_exp_by_level(ctx, level);
 }
 
 ast_stmt_t *__p_expect_simp(p_ctx_t *ctx) {
-    if (!__p_fset_stmt(ctx)) __p_set_err(ctx, "expecting (simple) statement");
+    if (!__p_fset_stmt(ctx)) {
+        __p_set_err(ctx, "expecting (simple) statement");
+        return NULL;
+    }
+
     return __p_parse_simp(ctx);
 }
 
@@ -1079,7 +1100,10 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 
     l_token_t *tok = __p_expect_id_tok(ctx, false);
     if (tok == NULL) return NULL;
+
+    // insert into ctx before continuing to allow recursive struct pointers
     strct->name = tok->str;
+    om_insert_si(ctx->types, string_join("$", strct->name), 0);
 
     if (__p_is_eof(ctx)) {
         __p_eof_err(ctx);
@@ -1113,7 +1137,6 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
         if (!__p_expect_sep(";", ctx)) return NULL;
     }
 
-    om_insert_si(ctx->types, string_join("$", strct->name), 0);
     return strct;
 }
 
