@@ -91,6 +91,10 @@ void pt_test_type_basic() {
 
     ctx = pt_make_ctx("struct string", "");
     assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
+
+    ctx = pt_make_ctx("foo []**[][]**[]", "foo");
+    type = __p_parse_type(ctx);
+    assert(pt_is_type(type, 'A'));
 }
 
 void pt_test_type_suffix() {
