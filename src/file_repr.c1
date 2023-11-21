@@ -10,10 +10,24 @@ struct fr_file_t {
 };
 typedef struct fr_file_t fr_file_t;
 
-fr_pos_t *fr_create_pos(int row, int col) {
+fr_pos_t *fr_create_pos(int start_r, int start_c, int end_r, int end_c) {
     fr_pos_t *pos = alloc(fr_pos_t);
-    pos->row = row;
-    pos->col = col;
+    pos->start_row = start_r;
+    pos->start_col = start_c;
+    pos->end_row = end_r;
+    pos->end_col = end_c;
+
+    return pos;
+}
+
+fr_pos_t *fr_merge_pos(fr_pos_t *a, fr_pos_t *b)
+//@requires a->start_row <= b->end_row && a->start_col <= b->start_col;
+{
+    fr_pos_t *pos = alloc(fr_pos_t);
+    pos->start_row = a->start_row;
+    pos->start_col = a->start_col;
+    pos->end_row = b->end_row;
+    pos->end_col = b->end_col;
 
     return pos;
 }

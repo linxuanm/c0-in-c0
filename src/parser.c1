@@ -196,18 +196,6 @@ bool __p_is_type_name(string name, p_ctx_t *ctx)
     return om_has_s(ctx->types, name);
 }
 
-void __p_debug_pos(p_ctx_t *ctx)
-//@requires __p_is_ctx(ctx);
-{
-    printf(
-        "%c %s %d %d\n",
-        __p_peek(ctx)->type,
-        __p_peek(ctx)->str,
-        __p_peek(ctx)->pos->row,
-        __p_peek(ctx)->pos->col
-    );
-}
-
 vec_t *__p_convert_stmt_to_block(ast_stmt_t *stmt)
 //@requires stmt != NULL;
 //@ensures v_is_vector(\result);

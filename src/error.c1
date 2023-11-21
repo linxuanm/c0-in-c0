@@ -24,7 +24,10 @@ string e_format(e_error_t *err, string file_path) {
     }
 
     return format(
-        "%s: %d.%d: error: %s\n",
-        file_path, err->pos->row, err->pos->col, err->err_msg
+        "%s: %d.%d-%d.%d: error: %s\n",
+        file_path,
+        err->pos->start_row, err->pos->start_col,
+        err->pos->end_row, err->pos->end_col,
+        err->err_msg
     );
 }

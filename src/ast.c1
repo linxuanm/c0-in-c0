@@ -1,6 +1,8 @@
 struct fr_pos_t {
-    int row;
-    int col;
+    int start_row;
+    int start_col;
+    int end_row;
+    int end_col;
 };
 typedef struct fr_pos_t fr_pos_t;
 
@@ -81,6 +83,9 @@ struct ast_exp_t {
 
     // `M`, `P`
     string attr;
+
+    // positional information
+    fr_pos_t *pos;
 };
 typedef struct ast_exp_t ast_exp_t;
 
@@ -133,6 +138,9 @@ struct ast_stmt_t {
     // `F`
     struct ast_stmt_t *init;
     struct ast_stmt_t *incr;
+
+    // positional information
+    fr_pos_t *pos;
 };
 typedef struct ast_stmt_t ast_stmt_t;
 
@@ -146,6 +154,9 @@ struct ast_func_t {
     vec_t *param_names;
 
     vec_t *stmts;
+
+    // positional information
+    fr_pos_t *pos;
 };
 typedef struct ast_func_t ast_func_t;
 
@@ -155,12 +166,18 @@ struct ast_struct_t {
     string name;
     vec_t *mem_types;
     vec_t *mem_names;
+
+    // positional information
+    fr_pos_t *pos;
 };
 typedef struct ast_struct_t ast_struct_t;
 
 struct ast_alias_t {
     string name;
     ast_type_t *original;
+
+    // positional information
+    fr_pos_t *pos;
 };
 
 typedef struct ast_alias_t ast_alias_t;

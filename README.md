@@ -10,7 +10,7 @@ To build the compiler executable, run `build.sh` (make sure you have a working i
 ```sh
 ./ccc0 --help
 ```
-for further instructions.
+for further instructions. For example, to
 
 ## Dependencies
 
