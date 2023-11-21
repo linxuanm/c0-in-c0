@@ -13,10 +13,13 @@ bool pt_is_stmt(ast_stmt_t *stmt, char expected) {
 }
 
 p_ctx_t *pt_make_ctx(string code, string type_names) {
-    vec_t *tokens = l_tokenize(code);
-    assert(tokens != NULL);
+    fr_file_t *file = alloc(fr_file_t);
+    file->prog = code;
 
-    p_ctx_t *ctx = p_create_ctx(tokens);
+    e_error_t *err = l_tokenize(file);
+    assert(!e_has_err(err));
+
+    p_ctx_t *ctx = p_create_ctx(file->tokens, p_empty_type_ctx());
 
     int n_types = num_tokens(type_names);
     string[] types = parse_tokens(type_names);
@@ -75,19 +78,19 @@ void pt_test_type_basic() {
     // only failing `struct` tested as fset excludes the rest
 
     ctx = pt_make_ctx("struct foo", "");
-    assert(__p_parse_type(ctx) == NULL && ctx->err);
+    assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("struct foo", "foo");
-    assert(__p_parse_type(ctx) == NULL && ctx->err);
+    assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("struct foo", "");
-    assert(__p_parse_type(ctx) == NULL && ctx->err);
+    assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
     
     ctx = pt_make_ctx("struct", "foo");
-    assert(__p_parse_type(ctx) == NULL && ctx->err);
+    assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("struct string", "");
-    assert(__p_parse_type(ctx) == NULL && ctx->err);
+    assert(__p_parse_type(ctx) == NULL && e_has_err(ctx->err));
 }
 
 void pt_test_type_suffix() {
@@ -145,15 +148,15 @@ void pt_test_type_suffix() {
 
     ctx = pt_make_ctx("struct [][]", "");
     type = __p_parse_type(ctx);
-    assert(type == NULL && ctx->err);
+    assert(type == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("int [[]", "");
     type = __p_parse_type(ctx);
-    assert(type == NULL && ctx->err);
+    assert(type == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("string [][][][", "");
     type = __p_parse_type(ctx);
-    assert(type == NULL && ctx->err);
+    assert(type == NULL && e_has_err(ctx->err));
 
     ctx = pt_make_ctx("HELLO [][][]]", "HELLO");
     type = __p_parse_type(ctx);
@@ -162,7 +165,7 @@ void pt_test_type_suffix() {
 
     ctx = pt_make_ctx("int []*[)", "");
     type = __p_parse_type(ctx);
-    assert(type == NULL && ctx->err);
+    assert(type == NULL && e_has_err(ctx->err));
 
     // mixing pointers and arrays
     ctx = pt_make_ctx("l_token_t *[]", "l_token_t");

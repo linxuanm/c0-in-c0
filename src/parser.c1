@@ -385,6 +385,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
     if (tok->type == 'K') {
         string word = tok->str;
+        type->pos = tok->pos;
 
         if (string_equal(word, "int")) type->type = 'I';
         else if (string_equal(word, "bool")) type->type = 'B';
@@ -405,6 +406,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         
             type->type = 'X';
             type->iden = iden->str;
+            type->pos = fr_merge_pos(tok->pos, iden->pos);
         }
 
     } else if (tok->type == 'I') {
@@ -413,6 +415,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
         type->type = 'D';
         type->iden = tok->str;
+        type->pos = tok->pos;
     } else {
         error("unreachable by first-set exclusion");
     }
@@ -424,9 +427,12 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         if (__p_match(curr, 'S', "[")) {
             if (!__p_expect_sep("]", ctx)) return NULL;
 
+            l_token_t *last = ctx->tokens[ctx->pc - 1];
             outer->type = 'A';
+            outer->pos = fr_merge_pos(type->pos, last->pos);
         } else if (__p_match(curr, 'O', "*")) {
             outer->type = 'P';
+            outer->pos = fr_merge_pos(type->pos, curr->pos);
         } else {
             error("unreachable by first-set exclusion");
         }

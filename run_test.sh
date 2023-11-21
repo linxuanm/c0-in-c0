@@ -1,1 +1,1 @@
-cc0 -d -w -x lib/vector.c1 lib/regex.c1 lib/ordered_map.c1 src/utils.c1 src/file_io.c1 src/lexer.c1 src/ast.c1 src/ast_printer.c1 src/file_repr.c1 src/error.c1 src/type_check.c1 src/ir_ssa.c1 control_flow.c1 src/semantics.c1 src/parser.c1 src/compile.c1 tests/parser-test.c1 tests/test.c1
+cc0 -d -w -x lib/vector.c1 lib/regex.c1 lib/ordered_map.c1 src/utils.c1 src/file_io.c1 src/ast.c1 src/ast_printer.c1 src/file_repr.c1 src/error.c1 src/lexer.c1 src/type_check.c1 src/ir_ssa.c1 src/control_flow.c1 src/semantics.c1 src/parser.c1 src/compile.c1 tests/parser-test.c1 tests/test.c1
