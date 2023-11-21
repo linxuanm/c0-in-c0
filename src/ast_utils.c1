@@ -1,13 +1,15 @@
 #use <conio>
 #use <string>
 
-void __ap_indent(int size)
+// BEGIN printing
+
+void __au_indent(int size)
 //@requires size >= 0;
 {
     for (int i = 0; i < size; i++) print("    ");
 }
 
-void __ap_print_type(ast_type_t *type)
+void __au_print_type(ast_type_t *type)
 //@requires type != NULL;
 {
     if (type->type == 'I') print("int");
@@ -18,18 +20,18 @@ void __ap_print_type(ast_type_t *type)
     else if (type->type == 'D') print(type->iden);
     else if (type->type == 'X') printf("struct %s", type->iden);
     else if (type->type == 'A') {
-        __ap_print_type(type->content);
+        __au_print_type(type->content);
         print("[]");
     }
     else if (type->type == 'P') {
-        __ap_print_type(type->content);
+        __au_print_type(type->content);
         print("*");
     } else {
         print("<unknown_type>");
     }
 }
 
-void __ap_print_exp(ast_exp_t *exp, bool add_paren)
+void __au_print_exp(ast_exp_t *exp, bool add_paren)
 //@requires exp != NULL;
 {
     if (exp->type == 'I') printint(exp->lit_int);
@@ -43,54 +45,54 @@ void __ap_print_exp(ast_exp_t *exp, bool add_paren)
         printf("%s(", exp->iden);
 
         if (v_length(exp->params) > 0) {
-            __ap_print_exp((ast_exp_t *) v_get(exp->params, 0), false);
+            __au_print_exp((ast_exp_t *) v_get(exp->params, 0), false);
             for (int i = 1; i < v_length(exp->params); i++) {
                 print(", ");
-                __ap_print_exp((ast_exp_t *) v_get(exp->params, i), false);
+                __au_print_exp((ast_exp_t *) v_get(exp->params, i), false);
             }
         }
 
         printchar(')');
     } else if (exp->type == 'X') {
-        __ap_print_exp(exp->left, false);
+        __au_print_exp(exp->left, false);
         printchar('[');
-        __ap_print_exp(exp->right, false);
+        __au_print_exp(exp->right, false);
         printchar(']');
     } else if (exp->type == 'A') {
         print("alloc(");
-        __ap_print_type(exp->alloc_type);
+        __au_print_type(exp->alloc_type);
         printchar(')');
     } else if (exp->type == 'R') {
         print("alloc_array(");
-        __ap_print_type(exp->alloc_type);
+        __au_print_type(exp->alloc_type);
         print(", ");
-        __ap_print_exp(exp->alloc_length, false);
+        __au_print_exp(exp->alloc_length, false);
         printchar(')');
     } else if (exp->type == 'O') {
         if (add_paren) printchar('(');
-        __ap_print_exp(exp->left, true);
+        __au_print_exp(exp->left, true);
         printf(" %s ", exp->operator);
-        __ap_print_exp(exp->right, true);
+        __au_print_exp(exp->right, true);
         if (add_paren) printchar(')');
     } else if (exp->type == 'U') {
         if (add_paren) printchar('(');
         printf("%s", exp->operator);
-        __ap_print_exp(exp->left, true);
+        __au_print_exp(exp->left, true);
         if (add_paren) printchar(')');
     } else if (exp->type == 'T') {
         if (add_paren) printchar('(');
-        __ap_print_exp(exp->cond, true);
+        __au_print_exp(exp->cond, true);
         print(" ? ");
-        __ap_print_exp(exp->left, true);
+        __au_print_exp(exp->left, true);
         print(" : ");
-        __ap_print_exp(exp->right, true);
+        __au_print_exp(exp->right, true);
         if (add_paren) printchar(')');
     } else if (exp->type == 'M') {
-        __ap_print_exp(exp->left, true);
+        __au_print_exp(exp->left, true);
         printchar('.');
         print(exp->attr);
     } else if (exp->type == 'P') {
-        __ap_print_exp(exp->left, true);
+        __au_print_exp(exp->left, true);
         print("->");
         print(exp->attr);
     } else {
@@ -98,131 +100,131 @@ void __ap_print_exp(ast_exp_t *exp, bool add_paren)
     }
 }
 
-void __ap_print_stmt(ast_stmt_t *stmt, int indent, bool semicolon)
+void __au_print_stmt(ast_stmt_t *stmt, int indent, bool semicolon)
 //@requires stmt != NULL;
 {
     if (stmt->type == 'A') {
-        __ap_indent(indent);
-        __ap_print_exp(stmt->lv, false);
+        __au_indent(indent);
+        __au_print_exp(stmt->lv, false);
         printf(" %s ", stmt->asn_op);
-        __ap_print_exp(stmt->rv, false);
+        __au_print_exp(stmt->rv, false);
         if (semicolon) printchar(';');
     } else if (stmt->type == 'P') {
-        __ap_indent(indent);
-        __ap_print_exp(stmt->lv, false);
+        __au_indent(indent);
+        __au_print_exp(stmt->lv, false);
         print(stmt->suffix_op);
         if (semicolon) printchar(';');
     } else if (stmt->type == 'E') {
-        __ap_indent(indent);
-        __ap_print_exp(stmt->rv, false);
+        __au_indent(indent);
+        __au_print_exp(stmt->rv, false);
         if (semicolon) printchar(';');
     } else if (stmt->type == 'D') {
-        __ap_indent(indent);
-        __ap_print_type(stmt->decl_type);
+        __au_indent(indent);
+        __au_print_type(stmt->decl_type);
         printf(" %s", stmt->decl_iden);
 
         if (stmt->rv == NULL) {
             if (semicolon) printchar(';');
         } else {
             print(" = ");
-            __ap_print_exp(stmt->rv, false);
+            __au_print_exp(stmt->rv, false);
             if (semicolon) printchar(';');
         }
     } else if (stmt->type == 'R') {
-        __ap_indent(indent);
+        __au_indent(indent);
         print("return ");
-        __ap_print_exp(stmt->rv, false);
+        __au_print_exp(stmt->rv, false);
         if (semicolon) printchar(';');
     } else if (stmt->type == 'S' || stmt->type == 'O') {
-        __ap_indent(indent);
+        __au_indent(indent);
         print(stmt->type == 'S' ? "assert(" : "error(");
-        __ap_print_exp(stmt->rv, false);
+        __au_print_exp(stmt->rv, false);
         printchar(')');
         if (semicolon) printchar(';');
     } else if (stmt->type == 'I') {
-        __ap_indent(indent);
+        __au_indent(indent);
         print("if (");
-        __ap_print_exp(stmt->cond, false);
+        __au_print_exp(stmt->cond, false);
         println(") {");
         for (int i = 0; i < v_length(stmt->blk_a); i++) {
-            __ap_print_stmt(
+            __au_print_stmt(
                 (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, true
             );
             println("");
         }
-        __ap_indent(indent);
+        __au_indent(indent);
         print("}");
 
         if (stmt->blk_b != NULL) {
             println(" else {");
             for (int i = 0; i < v_length(stmt->blk_b); i++) {
-                __ap_print_stmt(
+                __au_print_stmt(
                     (ast_stmt_t *) v_get(stmt->blk_b, i), indent + 1, true
                 );
                 println("");
             }
-            __ap_indent(indent);
+            __au_indent(indent);
             printchar('}');
         }
     } else if (stmt->type == 'W') {
-        __ap_indent(indent);
+        __au_indent(indent);
         print("while (");
-        __ap_print_exp(stmt->cond, false);
+        __au_print_exp(stmt->cond, false);
         println(") {");
         for (int i = 0; i < v_length(stmt->blk_a); i++) {
-            __ap_print_stmt(
+            __au_print_stmt(
                 (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, true
             );
             println("");
         }
-        __ap_indent(indent);
+        __au_indent(indent);
         print("}");
     } else if (stmt->type == 'F') {
-        __ap_indent(indent);
+        __au_indent(indent);
         print("for (");
-        __ap_print_stmt(stmt->init, 0, false);
+        __au_print_stmt(stmt->init, 0, false);
         print("; ");
-        __ap_print_exp(stmt->cond, false);
+        __au_print_exp(stmt->cond, false);
         print("; ");
-        __ap_print_stmt(stmt->incr, 0, false);
+        __au_print_stmt(stmt->incr, 0, false);
         println(") {");
         for (int i = 0; i < v_length(stmt->blk_a); i++) {
-            __ap_print_stmt(
+            __au_print_stmt(
                 (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, false
             );
             println("");
         }
-        __ap_indent(indent);
+        __au_indent(indent);
         printchar('}');
     } else if (stmt->type == 'B') {
-        __ap_indent(indent);
+        __au_indent(indent);
         println("{");
         for (int i = 0; i < v_length(stmt->blk_a); i++) {
-            __ap_print_stmt(
+            __au_print_stmt(
                 (ast_stmt_t *) v_get(stmt->blk_a, i), indent + 1, false
             );
             println("");
         }
-        __ap_indent(indent);
+        __au_indent(indent);
         print("}");
     } else {
         print("<unknown_statement>");
     }
 }
 
-void __ap_print_func(ast_func_t *func)
+void __au_print_func(ast_func_t *func)
 //@requires func != NULL;
 {
-    __ap_print_type(func->ret_type);
+    __au_print_type(func->ret_type);
     printf(" %s(", func->name);
 
     if (v_length(func->param_types) > 0) {
-        __ap_print_type((ast_type_t *) v_get(func->param_types, 0));
+        __au_print_type((ast_type_t *) v_get(func->param_types, 0));
         printf(" %s", * (string *) v_get(func->param_names, 0));
 
         for (int i = 1; i < v_length(func->param_types); i++) {
             print(", ");
-            __ap_print_type((ast_type_t *) v_get(func->param_types, i));
+            __au_print_type((ast_type_t *) v_get(func->param_types, i));
             printf(" %s", * (string *) v_get(func->param_names, i));
         }
     }
@@ -233,7 +235,7 @@ void __ap_print_func(ast_func_t *func)
         println(" {");
 
         for (int i = 0; i < v_length(func->stmts); i++) {
-            __ap_print_stmt((ast_stmt_t *) v_get(func->stmts, i), 1, true);
+            __au_print_stmt((ast_stmt_t *) v_get(func->stmts, i), 1, true);
             println("");
         }
 
@@ -245,7 +247,7 @@ void __ap_print_func(ast_func_t *func)
     println("");
 }
 
-void __ap_print_struct(ast_struct_t *strct)
+void __au_print_struct(ast_struct_t *strct)
 //@requires strct != NULL;
 {
     printf("struct %s", strct->name);
@@ -254,8 +256,8 @@ void __ap_print_struct(ast_struct_t *strct)
         println(" {");
 
         for (int i = 0; i < v_length(strct->mem_types); i++) {
-            __ap_indent(1);
-            __ap_print_type((ast_type_t *) v_get(strct->mem_types, i));
+            __au_indent(1);
+            __au_print_type((ast_type_t *) v_get(strct->mem_types, i));
             printf(" %s;\n", * (string *) v_get(strct->mem_names, i));
         }
 
@@ -265,28 +267,36 @@ void __ap_print_struct(ast_struct_t *strct)
     }
 }
 
-void __ap_print_alias(ast_alias_t *alias)
+void __au_print_alias(ast_alias_t *alias)
 //@requires alias != NULL;
 {
     print("typedef ");
-    __ap_print_type(alias->original);
+    __au_print_type(alias->original);
     printf(" %s;\n", alias->name);
 }
 
-void ap_print_program(ast_program_t *prog)
+void au_print_program(ast_program_t *prog)
 //@requires prog != NULL;
 {
     for (int i = 0; i < v_length(prog->globs); i++) {
         ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
         if (glob->type == 'F') {
-            __ap_print_func(glob->func);
+            __au_print_func(glob->func);
         } else if (glob->type == 'S') {
-            __ap_print_struct(glob->struc);
+            __au_print_struct(glob->struc);
         } else if (glob->type == 'T') {
-            __ap_print_alias(glob->alias);
+            __au_print_alias(glob->alias);
         } else {
             print("<unknown_global_defn>");
         }
         println("");
     }
 }
+
+// END printing
+
+// BEGIN equality
+
+
+
+// END equality

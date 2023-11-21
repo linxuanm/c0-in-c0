@@ -70,7 +70,7 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
             }
             if (v_length(file->libs) != 0) println("");
 
-            ap_print_program(file->ast);
+            au_print_program(file->ast);
         }
 
         return __c_exit();
