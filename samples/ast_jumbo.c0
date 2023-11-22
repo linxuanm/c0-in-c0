@@ -1,0 +1,158 @@
+#use <util>
+
+int LF(int i, int j, int k) {
+  if (i < k) return i;
+
+  return LF(i - j, j, k) + LF(i - k, j, k);
+}
+
+bool is_memo_table(int[] M, int len, int j, int k) {
+  for (int i = 0; i <= len; i++) {
+    if (M[i] != 0 && M[i] != LF(i, j, k)) return false;
+  }
+
+  return true;
+}
+
+int lf_memo(int[] M, int i, int j, int k) {
+  if (M[i] != 0) return M[i];
+  if (i < k) return i;
+
+  int val = lf_memo(M, i - j, j, k) + lf_memo(M, i - k, j, k);
+  M[i] = val;
+  return val;
+}
+
+int fast_lf(int i, int j, int k) {
+  int[] M = alloc_array(int, i + 1);
+  return lf_memo(M, i, j, k);
+}
+
+pixel_t[] hide(
+    pixel_t[] cover, pixel_t[] secret, int width, int height, int quality
+)
+//@requires 1 <= quality && quality <= 7;
+//@requires is_valid_imagesize(width, height);
+//@requires width * height == \length(cover);
+//@requires width * height == \length(secret);
+//@ensures \result != cover && \result != secret;
+//@ensures width * height == \length(\result);
+{
+  // bit mask for secret image quality
+  int mask_secret = (0xFF << (8 - quality)) & 0xFF;
+  int mask_cover = (0xFF << quality) & 0xFF;
+  //@assert mask_secret < 0xFF && (mask_secret & 0xFFFFFF00) == 0;
+  //@assert mask_cover < 0xFF && (mask_cover & 0xFFFFFF00) == 0;
+
+  pixel_t[] stego = alloc_array(pixel_t, width * height);
+  for (int row = 0; row < height; row++)
+  //@loop_invariant 0 <= row && row <= height;
+  {
+    for (int col = 0; col < width; col++)
+    //@loop_invariant 0 <= col && col <= width;
+    {
+      //@assert is_valid_pixel(row, col, width, height);
+
+      int idx = get_index(row, col, width, height);
+      pixel_t p_secret = secret[idx];
+      pixel_t p_cover = cover[idx];
+
+      // fetch channels of secret image and mask, then shift to right
+      int a_secret = (get_alpha(p_secret) & mask_secret) >> (8 - quality);
+      int r_secret = (get_red(p_secret) & mask_secret) >> (8 - quality);
+      int g_secret = (get_green(p_secret) & mask_secret) >> (8 - quality);
+      int b_secret = (get_blue(p_secret) & mask_secret) >> (8 - quality);
+
+      // fetch channels of cover image and mask
+      int a_cover = get_alpha(p_cover) & mask_cover;
+      int r_cover = get_red(p_cover) & mask_cover;
+      int g_cover = get_green(p_cover) & mask_cover;
+      int b_cover = get_blue(p_cover) & mask_cover;
+
+      // combine into new pixel color
+      pixel_t result = make_pixel(
+          a_secret | a_cover,
+          r_secret | r_cover,
+          g_secret | g_cover,
+          b_secret | b_cover
+      );
+
+      // put into new image
+      stego[idx] = result;
+    }
+  }
+
+  return stego;
+}
+
+pixel_t[] unhide(pixel_t[] stego, int width, int height, int quality)
+//@requires 1 <= quality && quality <= 7;
+//@requires is_valid_imagesize(width, height);
+//@requires width * height == \length(stego);
+//@ensures \result != stego;
+//@ensures width * height == \length(\result);
+{
+  // bit mask for converting back
+  int mask = (~(0xFF << quality)) & 0xFF;
+
+  pixel_t[] secret = alloc_array(pixel_t, width * height);
+  for (int row = 0; row < height; row++)
+  //@loop_invariant 0 <= row && row <= height;
+  {
+    for (int col = 0; col < width; col++)
+    //@loop_invariant 0 <= col && col <= width;
+    {
+      //@assert is_valid_pixel(row, col, width, height);
+
+      int idx = get_index(row, col, width, height);
+      pixel_t p = stego[idx];
+
+      // extracting secret colors and shifting back
+      int a = (get_alpha(p) & mask) << (8 - quality);
+      int r = (get_red(p) & mask) << (8 - quality);
+      int g = (get_green(p) & mask) << (8 - quality);
+      int b = (get_blue(p) & mask) << (8 - quality);
+
+      // making new color
+      pixel_t result = make_pixel(a, r, g, b);
+
+      secret[idx] = result;
+    }
+  }
+
+  return secret;
+}
+
+struct foo {
+    int abc;
+};
+
+struct bar;
+
+int _main() {
+    struct foo *f = alloc(struct foo);
+    f->abc = 69;
+    return 0;
+}
+
+int main() {
+    string foo = "abc";
+    int a = 12;
+    a += 1 == 1 ? 2 : 2 + 3 == 2 ? 1 : 5;
+    int[] test = alloc_array(int, 12);
+    test[10];
+    assert(1 == 2);
+    error("hello");
+
+
+    {
+        {
+            a = 23;
+        }
+
+        int b = 2;
+        b += 3;
+    }
+
+    return a;
+}

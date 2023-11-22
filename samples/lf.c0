@@ -27,3 +27,5 @@ int fast_lf(int i, int j, int k) {
   int[] M = alloc_array(int, i + 1);
   return lf_memo(M, i, j, k);
 }
+
+typedef int pixel_t;

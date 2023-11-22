@@ -297,6 +297,163 @@ void au_print_program(ast_program_t *prog)
 
 // BEGIN equality
 
+bool au_eq_type(ast_type_t *a, ast_type_t *b) {
+    if (a->type != b->type) return false;
 
+    char type = a->type;
+    if (type == 'D' || type == 'X') return string_equal(a->iden, b->iden);
+    if (type == 'A' || type == 'P') return au_eq_type(a->content, b->content);
+
+    error(format("unimplemented ast_type_t type: '%c'", type));
+}
+
+bool au_eq_exp(ast_exp_t *a, ast_exp_t *b) {
+    if (a->type != b->type) return false;
+
+    char type = a->type;
+    if (type == 'I') return a->lit_int == b->lit_int;
+    if (type == 'C') return a->lit_chr == b->lit_chr;
+    if (type == 'S') return string_equal(a->lit_str, b->lit_str);
+    if (type == 'B') return a->lit_boo == b->lit_boo;
+
+    if (type == 'D') return string_equal(a->iden, b->iden);
+    if (type == 'F') {
+        if (!string_equal(a->iden, b->iden)) return false;
+        if (v_length(a->params) != v_length(b->params)) return false;
+
+        for (int i = 0; i < v_length(a->params); i++) {
+            ast_exp_t *curr_a = (ast_exp_t *) v_get(a->params, i);
+            ast_exp_t *curr_b = (ast_exp_t *) v_get(b->params, i);
+
+            if (!au_eq_exp(curr_a, curr_b)) return false;
+        }
+
+        return true;
+    }
+
+    if (type == 'X') {
+        return au_eq_exp(a->left, b->left) && au_eq_exp(a->right, b->right);
+    }
+
+    if (type == 'A') return au_eq_type(a->alloc_type, b->alloc_type);
+    if (type == 'R') {
+        return au_eq_type(a->alloc_type, b->alloc_type)
+            && au_eq_exp(a->alloc_length, b->alloc_length);
+    }
+
+    if (type == 'U') {
+        return string_equal(a->operator, b->operator)
+            && au_eq_exp(a->left, b->left);
+    }
+
+    if (type == 'O') {
+        return string_equal(a->operator, b->operator)
+            && au_eq_exp(a->left, b->left) && au_eq_exp(a->right, b->right);
+    }
+
+    if (type == 'T') {
+        return string_equal(a->operator, b->operator)
+            && au_eq_exp(a->cond, b->cond)
+            && au_eq_exp(a->left, b->left) && au_eq_exp(a->right, b->right);
+    }
+
+    if (type == 'M' || type == 'P') {
+        return au_eq_exp(a->left, b->left) && string_equal(a->attr, b->attr);
+    }
+
+    error(format("unimplemented ast_exp_t type: '%c'", type));
+}
+
+bool au_eq_stmt(ast_stmt_t *a, ast_stmt_t *b);
+
+bool au_eq_block(ast_block_t *a, ast_block_t *b) {
+    if (v_length(a) != v_length(b)) return false;
+
+    for (int i = 0; i < v_length(a); i++) {
+        ast_stmt_t *stmt_a = (ast_stmt_t *) v_get(a, i);
+        ast_stmt_t *stmt_b = (ast_stmt_t *) v_get(b, i);
+        if (!au_eq_stmt(stmt_a, stmt_b)) return false;
+    }
+
+    return true;
+}
+
+bool au_eq_stmt(ast_stmt_t *a, ast_stmt_t *b) {
+    if (a->type != b->type) return false;
+
+    char type = a->type;
+    if (type == 'A') {
+        return au_eq_exp(a->lv, b->rv) && au_eq_exp(a->rv, b->rv);
+    }
+
+    if (type == 'E' || type == 'S' || type == 'O') {
+        return au_eq_exp(a->rv, b->rv);
+    }
+
+    if (type == 'P') {
+        return string_equal(a->suffix_op, b->suffix_op)
+            && au_eq_exp(a->lv, b->rv);
+    }
+
+    if (type == 'D') {
+        if (!au_eq_type(a->decl_type, b->decl_type)) return false;
+        if (!string_equal(a->decl_iden, b->decl_iden)) return false;
+        
+        if (a->rv == NULL && b->rv == NULL) return true;
+        if (a->rv == NULL || b->rv == NULL) return false;
+
+        return au_eq_exp(a->rv, b->rv);
+    }
+
+    if (type == 'R') {
+        if (a->rv == NULL && b->rv == NULL) return true;
+        if (a->rv == NULL || b->rv == NULL) return false;
+        return au_eq_exp(a->rv, b->rv);
+    }
+
+    if (type == 'B') return au_eq_block(a->blk_a, b->blk_a);
+    if (type == 'I') {
+        if (!au_eq_exp(a->cond, b->cond)) return false;
+        if (!au_eq_block(a->blk_a, b->blk_a)) return false;
+
+        if (a->blk_b == NULL && b->blk_b == NULL) return true;
+        if (a->blk_b == NULL || b->blk_b == NULL) return false;
+
+        return au_eq_block(a->blk_b, b->blk_b);
+    }
+
+    if (type == 'W') {
+        return au_eq_exp(a->cond, b->cond) && au_eq_block(a->blk_a, b->blk_a);
+    }
+
+    if (type == 'F') {
+        return au_eq_stmt(a->init, b->init) && au_eq_exp(a->cond, b->cond)
+            && au_eq_stmt(a->incr, b->incr) && au_eq_block(a->blk_a, b->blk_a);
+    }
+
+    error(format("unimplemented ast_stmt_t type: '%c'", type));
+}
+
+bool au_eq_func(ast_func_t *a, ast_func_t *b) {
+    if (!au_eq_type(a->ret_type, b->ret_type)) return false;
+    if (!string_equal(a->name, b->name)) return false;
+    if (v_length(a->param_types) != v_length(b->param_types)) return false;
+    if (v_length(a->param_names) != v_length(b->param_names)) return false;
+
+    for (int i = 0; i < v_length(a->param_types); i++) {
+        ast_type_t *type_a = (ast_type_t *) v_get(a->param_types, i);
+        ast_type_t *type_b = (ast_type_t *) v_get(b->param_types, i);
+        string iden_a = v_get_string(a->param_names, i);
+        string iden_b = v_get_string(b->param_names, i);
+
+        if (!au_eq_type(type_a, type_b)) return false;
+        if (!string_equal(iden_a, iden_b)) return false;
+    }
+
+    if (!a->defined && !b->defined) return true;
+    if (!a->defined || !b->defined) return false;
+
+    return au_eq_block(a->stmts, b->stmts);
+}
 
 // END equality
