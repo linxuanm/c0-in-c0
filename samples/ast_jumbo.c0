@@ -1,5 +1,8 @@
 #use <util>
 
+struct pixel;
+typedef struct pixel pixel_t;
+
 int LF(int i, int j, int k) {
   if (i < k) return i;
 

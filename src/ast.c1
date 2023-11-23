@@ -187,7 +187,6 @@ struct ast_glob_t {
         - F: function
         - S: struct
         - T: typedef
-        - U: use
      */
     char type;
 

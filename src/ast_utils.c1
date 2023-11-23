@@ -456,4 +456,31 @@ bool au_eq_func(ast_func_t *a, ast_func_t *b) {
     return au_eq_block(a->stmts, b->stmts);
 }
 
+bool au_eq_struct(ast_struct_t *a, ast_struct_t *b) {
+    if (!string_equal(a->name, b->name)) return false;
+
+    if (!a->defined && !b->defined) return true;
+    if (!a->defined || !b->defined) return false;
+
+    if (v_length(a->mem_types) != v_length(b->mem_types)) return false;
+    if (v_length(a->mem_names) != v_length(b->mem_names)) return false;
+
+    for (int i = 0; i < v_length(a->mem_types); i++) {
+        ast_type_t *type_a = (ast_type_t *) v_get(a->mem_types, i);
+        ast_type_t *type_b = (ast_type_t *) v_get(b->mem_types, i);
+        string iden_a = v_get_string(a->mem_names, i);
+        string iden_b = v_get_string(b->mem_names, i);
+
+        if (!au_eq_type(type_a, type_b)) return false;
+        if (!string_equal(iden_a, iden_b)) return false;
+    }
+
+    return true;
+}
+
+bool au_eq_alias(ast_alias_t *a, ast_alias_t *b) {
+    return string_equal(a->name, b->name)
+        && au_eq_type(a->original, b->original);
+}
+
 // END equality
