@@ -860,9 +860,13 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         l_token_t *ret = __p_next(ctx);
         stmt->type = 'R';
-        stmt->rv = __p_expect_exp(ctx);
-        if (stmt->rv == NULL) return NULL;
-        stmt->pos = fr_merge_pos(ret->pos, stmt->rv->pos);
+        stmt->pos = ret->pos;
+
+        if (__p_fset_exp(ctx)) {
+            stmt->rv = __p_expect_exp(ctx);
+            if (stmt->rv == NULL) return NULL;
+            stmt->pos = fr_merge_pos(ret->pos, stmt->rv->pos);
+        }
 
     } else {
         error("unreachable by first-set exclusion");
