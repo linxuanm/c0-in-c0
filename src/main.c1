@@ -52,6 +52,10 @@ void print_help() {
 
     print_padded("  --dump-ast", pad);
     println("  Only pretty print the program's abstract syntax tree");
+
+    print_padded("  --lib-path <path>", pad);
+    print("  Set the path to the C0 libraries ");
+    println("(default: \"/afs/andrew/course/15/122/lib\")");
 }
 
 int main() {
@@ -67,6 +71,10 @@ int main() {
 
     bool *dump_ast = alloc(bool);
     args_flag("--dump-ast",  dump_ast);
+
+    string *lib_path = alloc(string);
+    *lib_path = "/afs/andrew/course/15/122/lib";
+    args_string("--lib-path", lib_path);
 
     args_t args = args_parse();
     if (args->argc == 0) {
@@ -88,6 +96,7 @@ int main() {
         params->purity = *purity;
         params->warining = *warning;
         params->dump_ast = *dump_ast;
+        params->lib_path = *lib_path;
         
         compile_files(args->argv, args->argc, params);
     }

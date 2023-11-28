@@ -146,6 +146,7 @@ typedef struct ast_stmt_t ast_stmt_t;
 
 struct ast_func_t {
     bool defined;
+    bool native;
 
     ast_type_t *ret_type;
     string name;

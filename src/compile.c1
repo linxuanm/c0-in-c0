@@ -4,6 +4,7 @@ struct cparams_t {
     bool purity;
     bool warining;
     bool dump_ast;
+    string lib_path;
 };
 typedef struct cparams_t cparams_t;
 

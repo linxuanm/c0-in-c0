@@ -84,3 +84,16 @@ string u_tok_type_to_readable(char type)
 
     error(format("Sanity Check: unknown token type '%c'", type));
 }
+
+bool u_is_c0_lib(string lib) {
+    return string_equal(lib, "rand") || string_equal(lib, "util");
+}
+
+bool u_is_native_lib(string lib) {
+    return string_equal(lib, "conio")
+        || string_equal(lib, "file")
+        || string_equal(lib, "args")
+        || string_equal(lib, "parse")
+        || string_equal(lib, "string")
+        || string_equal(lib, "img");
+}
