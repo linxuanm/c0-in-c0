@@ -29,3 +29,12 @@ bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
         error("unimplemented type");
     }
 }
+
+bool t_is_small_type(om_map_t *alias_map, ast_type_t *type)
+//@requires type != NULL;
+{
+    ast_type_t *actual = t_deref_alias(alias_map, type);
+    return actual->type == 'I' || actual->type == 'B'
+        || actual->type == 'C' || actual->type == 'S'
+        || actual->type == 'A' || actual->type == 'P';
+}

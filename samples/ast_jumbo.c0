@@ -88,6 +88,11 @@ pixel_t[] hide(
   return stego;
 }
 
+void test() {
+  int a = 20;
+  return;
+}
+
 pixel_t[] unhide(pixel_t[] stego, int width, int height, int quality)
 //@requires 1 <= quality && quality <= 7;
 //@requires is_valid_imagesize(width, height);
