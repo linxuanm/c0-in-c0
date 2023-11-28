@@ -1,3 +1,5 @@
+// TODO: delete this file
+
 #use <file>
 
 vec_t *__pt_read_lines(string path) {
@@ -29,11 +31,14 @@ string __pt_seq_pos(vec_t *lines, fr_pos_t *pos) {
     return res;
 }
 
-void __pt_test_func(vec_t *lines, ast_func_t *ast)  {
-    
+void __pt_test_func(vec_t *lines, string types, ast_func_t *ast)  {
+    p_ctx_t *ctx;
+
+    string ret_type_raw = __pt_seq_pos(lines, ast->ret_type->pos);
+    ctx = pt_make_ctx(ret_type_raw, "");
 }
 
-void __pt_test_struct(vec_t *lines, ast_struct_t *ast)  {
+void __pt_test_struct(vec_t *lines, string types, ast_struct_t *ast) {
 
 }
 
@@ -61,9 +66,9 @@ void __pt_test_file(string path) {
     for (int i = 0; i < v_length(file->ast->globs); i++) {
         ast_glob_t *glob = (ast_glob_t *) v_get(file->ast->globs, i);
         if (glob->type == 'F') {
-            __pt_test_func(lines, glob->func);
+            // __pt_test_func(lines, glob->func);
         } else if (glob->type == 'S') {
-            __pt_test_struct(lines, glob->struc);
+            // __pt_test_struct(lines, glob->struc);
         } else {
             //@assert(glob->type == 'T');
         }

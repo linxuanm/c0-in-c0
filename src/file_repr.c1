@@ -21,7 +21,9 @@ fr_pos_t *fr_create_pos(int start_r, int start_c, int end_r, int end_c) {
 }
 
 fr_pos_t *fr_merge_pos(fr_pos_t *a, fr_pos_t *b)
-//@requires a->start_row <= b->end_row && a->start_col <= b->start_col;
+/*@requires a->start_row == b->end_row && a->start_col <= b->start_col ||
+            a->start_row < b->end_row;
+@*/
 {
     fr_pos_t *pos = alloc(fr_pos_t);
     pos->start_row = a->start_row;
@@ -30,4 +32,23 @@ fr_pos_t *fr_merge_pos(fr_pos_t *a, fr_pos_t *b)
     pos->end_col = b->end_col;
 
     return pos;
+}
+
+bool fr_is_valid_pos(fr_pos_t *pos) {
+    return pos != NULL
+        && pos->start_row > 0 && pos->start_col > 0
+        && (pos->end_row == pos->start_row && pos->end_col >= pos->start_col
+        || pos->end_row > pos->start_row);
+}
+
+bool fr_has_pos_type(ast_type_t *type)
+//@requires type != NULL;
+{
+    return fr_is_valid_pos(type->pos);
+}
+
+bool fr_has_pos_exp(ast_exp_t *exp)
+//@requires exp != NULL;
+{
+    return fr_is_valid_pos(exp->pos);
 }

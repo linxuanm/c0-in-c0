@@ -20,11 +20,11 @@ bool e_has_err(e_error_t *err) {
 
 string e_format(e_error_t *err, string file_path) {
     if (err->pos == NULL) {
-        return format("%s: error: %s\n", file_path, err->err_msg);
+        return format("%s: skill issue: %s\n", file_path, err->err_msg);
     }
 
     return format(
-        "%s: %d.%d-%d.%d: error: %s\n",
+        "%s: %d.%d-%d.%d: skill issue: %s\n",
         file_path,
         err->pos->start_row, err->pos->start_col,
         err->pos->end_row, err->pos->end_col,

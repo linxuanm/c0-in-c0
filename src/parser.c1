@@ -62,6 +62,13 @@ p_ctx_t *p_create_ctx(vec_t *tokens, om_map_t *type_ctx)
 
 // BEGIN shorthands
 
+// hacky "get-last-token-to-assign-the-referencing-position-of-each-AST"
+fr_pos_t *__p_last_pos(p_ctx_t *ctx)
+//@requires __p_is_ctx(ctx) && ctx->pc > 0;
+{
+    return ctx->tokens[ctx->pc - 1]->pos;
+}
+
 void __p_set_err(p_ctx_t *ctx, string msg);
 void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok);
 void __p_eof_err(p_ctx_t *ctx);
@@ -427,9 +434,8 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
         if (__p_match(curr, 'S', "[")) {
             if (!__p_expect_sep("]", ctx)) return NULL;
 
-            l_token_t *last = ctx->tokens[ctx->pc - 1];
             outer->type = 'A';
-            outer->pos = fr_merge_pos(type->pos, last->pos);
+            outer->pos = fr_merge_pos(type->pos, __p_last_pos(ctx));
         } else if (__p_match(curr, 'O', "*")) {
             outer->type = 'P';
             outer->pos = fr_merge_pos(type->pos, curr->pos);
@@ -454,7 +460,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_exp(\result) && !e_has_err(ctx->err);
 @*/
 {
     ast_exp_t *exp = alloc(ast_exp_t);
@@ -472,6 +478,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
     } else if (tok->type == 'L') {
         string lit_str = tok->str;
         char fst = string_charat(lit_str, 0);
+        exp->pos = tok->pos;
 
         if (fst == '\'') {
             exp->type = 'C';
@@ -532,10 +539,12 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             }
 
             if (!__p_expect_sep(")", ctx)) return NULL;
+            exp->pos = fr_merge_pos(tok->pos, __p_last_pos(ctx));
 
         } else {
             exp->type = 'D';
             exp->iden = iden;
+            exp->pos = tok->pos;
         }
 
     // `alloc`
@@ -547,6 +556,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         if (exp->alloc_type == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+        exp->pos = fr_merge_pos(tok->pos, __p_last_pos(ctx));
 
     // `alloc_array`
     } else if (__p_match(tok, 'K', "alloc_array")) {
@@ -562,6 +572,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
         if (exp->alloc_type == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+        exp->pos = fr_merge_pos(tok->pos, __p_last_pos(ctx));
 
     } else {
         error("unreachable by first-set exclusion");
@@ -578,6 +589,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             idx_exp->type = 'X';
             idx_exp->left = exp;
             idx_exp->right = idx;
+            idx_exp->pos = fr_merge_pos(exp->pos, __p_last_pos(ctx));
             exp = idx_exp;
 
         } else if (__p_match(suf, 'O', "->") || __p_match(suf, 'O', ".")) {
@@ -593,6 +605,7 @@ ast_exp_t *__p_parse_exp_atom(p_ctx_t *ctx)
             attr_exp->type = __p_match(suf, 'O', ".") ? 'M' : 'P';
             attr_exp->left = exp;
             attr_exp->attr = name->str;
+            attr_exp->pos = fr_merge_pos(exp->pos, __p_last_pos(ctx));
             exp = attr_exp;
             
         } else {
@@ -608,7 +621,7 @@ ast_exp_t *__p_parse_exp(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_exp(\result) && !e_has_err(ctx->err);
 @*/
 {
     return __p_parse_exp_by_level(ctx, 13);
@@ -622,7 +635,7 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_exp(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_exp(\result) && !e_has_err(ctx->err);
 @*/
 {
     int n_ops = num_tokens(raw_operators);
@@ -642,6 +655,7 @@ ast_exp_t *__p_parse_exp_binop(p_ctx_t *ctx, string raw_operators, int level)
         combine->operator = operator->str;
         combine->left = exp;
         combine->right = next;
+        combine->pos = fr_merge_pos(exp->pos, next->pos);
         exp = combine;
     }
 
@@ -654,7 +668,7 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 //@requires __p_fset_exp(ctx);
 //@requires 0 <= level && level <= 13;
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_exp(\result) && !e_has_err(ctx->err);
 @*/
 {
     if (level == 0) {
@@ -674,6 +688,7 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
 
             // lazy right recusion hehe
             exp->left = __p_expect_exp_by_level(ctx, level);
+            exp->pos = fr_merge_pos(prefix->pos, exp->left->pos);
 
             return exp;
         } else {
@@ -718,6 +733,7 @@ ast_exp_t *__p_parse_exp_by_level(p_ctx_t *ctx, int level)
             combine->cond = cond;
             combine->left = if_exp;
             combine->right = else_exp;
+            combine->pos = fr_merge_pos(cond->pos, else_exp->pos);
             cond = combine;
         }
 
