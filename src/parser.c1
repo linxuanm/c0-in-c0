@@ -384,7 +384,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_type(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_type(\result) && !e_has_err(ctx->err);
 @*/
 {
     ast_type_t *type = alloc(ast_type_t);
@@ -773,7 +773,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_simp(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_stmt(\result) && !e_has_err(ctx->err);
 @*/
 {
     ast_stmt_t *stmt = alloc(ast_stmt_t);
@@ -783,6 +783,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         stmt->type = 'E';
         stmt->rv = fv;
+        stmt->pos = fv->pos;
 
         if (!__p_is_eof(ctx)) {
             l_token_t *peek = __p_peek(ctx);
@@ -793,6 +794,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
                 stmt->suffix_op = peek->str;
                 stmt->lv = fv;
                 stmt->rv = NULL;
+                stmt->pos = fr_merge_pos(fv->pos, peek->pos);
 
                 if (!__p_assert_left_value(ctx, stmt->lv, peek)) return NULL;
 
@@ -805,6 +807,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
                 stmt->asn_op = peek->str;
                 stmt->lv = fv;
                 stmt->rv = rhs;
+                stmt->pos = fr_merge_pos(fv->pos, rhs->pos);
 
                 if (!__p_assert_left_value(ctx, stmt->lv, peek)) return NULL;
             }
@@ -829,12 +832,14 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         stmt->type = 'D';
         stmt->decl_type = decl_type;
         stmt->decl_iden = id_tok->str;
+        stmt->pos = fr_merge_pos(decl_type->pos, id_tok->pos);
 
         if (!__p_is_eof(ctx) && __p_match(__p_peek(ctx), 'A', "=")) {
             __p_next(ctx);
             ast_exp_t *rhs = __p_expect_exp(ctx);
             if (rhs == NULL) return NULL;
             stmt->rv = rhs;
+            stmt->pos = fr_merge_pos(decl_type->pos, rhs->pos);
         }
 
     } else if (
@@ -849,13 +854,15 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         stmt->rv = __p_expect_exp(ctx);
         if (stmt->rv == NULL) return NULL;
         if (!__p_expect_sep(")", ctx)) return NULL;
+        stmt->pos = fr_merge_pos(kw_func->pos, __p_last_pos(ctx));
 
     } else if (__p_match(__p_peek(ctx), 'K', "return")) {
 
+        l_token_t *ret = __p_next(ctx);
         stmt->type = 'R';
-        __p_next(ctx);
         stmt->rv = __p_expect_exp(ctx);
         if (stmt->rv == NULL) return NULL;
+        stmt->pos = fr_merge_pos(ret->pos, stmt->rv->pos);
 
     } else {
         error("unreachable by first-set exclusion");
@@ -876,7 +883,7 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_stmt(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_stmt(\result) && !e_has_err(ctx->err);
 @*/
 {
     l_token_t *peek = __p_peek(ctx);
@@ -887,6 +894,7 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         stmt->type = 'B';
         stmt->blk_a = __p_expect_block(ctx);
         if (stmt->blk_a == NULL) return NULL;
+        stmt->pos = fr_merge_pos(peek->pos, __p_last_pos(ctx));
 
     } else if (__p_match(peek, 'K', "if"))  {
 
@@ -901,6 +909,7 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         if (stmt->cond == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+        stmt->pos = fr_merge_pos(peek->pos, __p_last_pos(ctx));
 
         // `{` [<stmt>] `}`
         ast_stmt_t *if_code = __p_expect_stmt(ctx);
@@ -929,6 +938,7 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         if (stmt->cond == NULL) return NULL;
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+        stmt->pos = fr_merge_pos(peek->pos, __p_last_pos(ctx));
 
         // `{` [<stmt>] `}`
         ast_stmt_t *content = __p_expect_stmt(ctx);
@@ -961,6 +971,7 @@ ast_stmt_t *__p_parse_stmt(p_ctx_t *ctx)
         }
 
         if (!__p_expect_sep(")", ctx)) return NULL;
+        stmt->pos = fr_merge_pos(peek->pos, __p_last_pos(ctx));
 
         // `{` [<stmt>] `}`
         ast_stmt_t *content = __p_expect_stmt(ctx);
@@ -1006,7 +1017,7 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_fset_type(ctx);
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_func(\result) && !e_has_err(ctx->err);
 @*/
 {
     ast_func_t *func = alloc(ast_func_t);
@@ -1019,6 +1030,7 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
     l_token_t *iden_tok = __p_expect_id_tok(ctx, true);
     if (iden_tok == NULL) return NULL;
     func->name = iden_tok->str;
+    func->pos = iden_tok->pos;
 
     if (!__p_expect_sep("(", ctx)) return NULL;
 
@@ -1074,10 +1086,10 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "typedef");
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_alias(\result) && !e_has_err(ctx->err);
 @*/
 {
-    __p_next(ctx);
+    l_token_t *typed_tok = __p_next(ctx);
     ast_alias_t *alias = alloc(ast_alias_t);
 
     alias->original = __p_expect_type(ctx);
@@ -1087,6 +1099,7 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
     if (tok == NULL) return NULL;
     alias->name = tok->str;
     if (!__p_expect_sep(";", ctx)) return NULL;
+    alias->pos = fr_merge_pos(typed_tok->pos, __p_last_pos(ctx));
 
     om_insert_si(ctx->types, alias->name, 0);
 
@@ -1102,7 +1115,7 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "struct");
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && !e_has_err(ctx->err);
+        || \result != NULL && fr_has_pos_strct(\result) && !e_has_err(ctx->err);
 @*/
 {
     __p_next(ctx);
@@ -1110,6 +1123,7 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 
     l_token_t *tok = __p_expect_id_tok(ctx, false);
     if (tok == NULL) return NULL;
+    strct->pos = tok->pos;
 
     // insert into ctx before continuing to allow recursive struct pointers
     strct->name = tok->str;

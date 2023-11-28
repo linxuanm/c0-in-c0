@@ -52,3 +52,27 @@ bool fr_has_pos_exp(ast_exp_t *exp)
 {
     return fr_is_valid_pos(exp->pos);
 }
+
+bool fr_has_pos_stmt(ast_stmt_t *stmt)
+//@requires stmt != NULL;
+{
+    return fr_is_valid_pos(stmt->pos);
+}
+
+bool fr_has_pos_func(ast_func_t *func)
+//@requires func != NULL;
+{
+    return fr_is_valid_pos(func->pos);
+}
+
+bool fr_has_pos_strct(ast_struct_t *strct)
+//@requires strct != NULL;
+{
+    return fr_is_valid_pos(strct->pos);
+}
+
+bool fr_has_pos_alias(ast_alias_t *alias)
+//@requires alias != NULL;
+{
+    return fr_is_valid_pos(alias->pos);
+}
