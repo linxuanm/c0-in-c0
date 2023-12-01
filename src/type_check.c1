@@ -26,7 +26,7 @@ bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
     } else if (a->type == 'A' || a->type == 'P') {
         return t_match_type(alias_map, a->content, b->content);
     } else {
-        error("unimplemented type");
+        return true;
     }
 }
 

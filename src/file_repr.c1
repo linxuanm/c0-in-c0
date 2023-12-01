@@ -1,4 +1,6 @@
 struct fr_file_t {
+    bool is_native;
+
     // compilation artifacts
     string path;
     string prog;

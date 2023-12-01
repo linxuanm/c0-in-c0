@@ -86,6 +86,9 @@ struct ast_exp_t {
 
     // positional information
     fr_pos_t *pos;
+
+    // number of C0VM instructions needed to load this expression
+    int n_c0vm_code;
 };
 typedef struct ast_exp_t ast_exp_t;
 
@@ -141,6 +144,9 @@ struct ast_stmt_t {
 
     // positional information
     fr_pos_t *pos;
+
+    // number of C0VM instructions needed to execute this statement
+    int n_c0vm_code;
 };
 typedef struct ast_stmt_t ast_stmt_t;
 

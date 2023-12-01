@@ -6,15 +6,16 @@ typedef struct s_warn_t s_warn_t;
 
 struct s_var_info_t {
     ast_type_t *type;
-    bool used;
 };
 typedef struct s_var_info_t s_var_info_t;
 
+// TODO: pureness checking
 struct s_func_info_t {
     bool implemented;
 
     ast_type_t *ret_type;
     vec_t *param_types; // [ast_type_t *]
+    om_map_t *local_vars; // string -> int
 
     // TODO
     bool pure;
@@ -26,8 +27,17 @@ struct s_scope_t {
 };
 typedef struct s_scope_t s_scope_t;
 
-// TODO: pureness checking
+// accumulative context; retained across files
 struct s_ctx_t {
+
+    om_map_t *alias_map; // string -> ast_type_t *
+    om_map_t *strct_map; // string -> s_strct_info_t *
+    om_map_t *func_map; // string -> s_func_info_t *
+};
+typedef struct s_ctx_t s_ctx_t;
+
+// current session for the current file
+struct s_session_t {
 
     // global
     om_map_t *alias_map; // string -> ast_type_t *
@@ -37,17 +47,16 @@ struct s_ctx_t {
     // local
     s_func_info_t *curr_func;
     vec_t *var_stack;
-    bool reachable;
-    int curr_row;
+    om_map_t *uninit_vars;
 
     // declared types/functions that must be defined
     // only functions need to be recorded as structs cannot be used outside of
-    // pure type checking prior to being defined
+    // type checking prior to being defined
     vec_t *required_funcs; // [string]
 
     e_error_t *err;
 };
-typedef struct s_ctx_t s_ctx_t;
+typedef struct s_session_t s_session_t;
 
 // BEGIN contracts
 
@@ -58,45 +67,76 @@ bool s_is_ctx(s_ctx_t *ctx) {
         && __om_is_valid_tree(ctx->func_map);
 }
 
-bool s_is_local_ctx(s_ctx_t *ctx) {
-    return s_is_ctx(ctx) && ctx->curr_func != NULL
-        && v_is_vector(ctx->var_stack);
+bool s_is_session(s_session_t *session) {
+    return session != NULL
+        && __om_is_valid_tree(session->alias_map)
+        && __om_is_valid_tree(session->strct_map)
+        && __om_is_valid_tree(session->func_map);
+}
+
+bool s_is_local_session(s_session_t *session) {
+    return s_is_session(session) && session->curr_func != NULL
+        && v_is_vector(session->var_stack)
+        && __om_is_valid_tree(session->uninit_vars);
 }
 
 // END contracts
 
 // BEGIN helper functions
 
-void __s_set_err(s_ctx_t *ctx, string msg)
-//@requires s_is_ctx(ctx);
-//@requires !e_has_err(ctx->err);
+s_ctx_t *s_empty_ctx()
+//@ensures s_is_ctx(\result);
 {
-    ctx->err = e_create_error(msg, NULL);
+    s_ctx_t *ctx = alloc(s_ctx_t);
+    ctx->alias_map = om_create_map(&string_ptr_compare);
+    ctx->strct_map = om_create_map(&string_ptr_compare);
+    ctx->func_map = om_create_map(&string_ptr_compare);
+
+    return ctx;
 }
 
-s_func_info_t *s_lookup_func(s_ctx_t *ctx, string name)
+s_session_t *s_new_session(s_ctx_t *ctx)
 //@requires s_is_ctx(ctx);
+//@ensures s_is_session(\result);
 {
-    s_func_info_t *res = (s_func_info_t *) om_get_s(ctx->func_map, name);
+    s_session_t *session = alloc(s_session_t);
+    session->alias_map = ctx->alias_map;
+    session->strct_map = ctx->strct_map;
+    session->func_map = ctx->func_map;
+
+    return session;
+}
+
+void __s_set_err(s_session_t *session, string msg)
+//@requires s_is_session(session);
+//@requires !e_has_err(session->err);
+{
+    session->err = e_create_error(msg, NULL);
+}
+
+s_func_info_t *s_lookup_func(s_session_t *session, string name)
+//@requires s_is_session(session);
+{
+    s_func_info_t *res = (s_func_info_t *) om_get_s(session->func_map, name);
     if (res == NULL) {
-        __s_set_err(ctx, format("function \"%s\" is not defined", name));
+        __s_set_err(session, format("function \"%s\" is not defined", name));
         return NULL;
     }
 
     return res;
 }
 
-s_var_info_t *s_lookup_var(s_ctx_t *ctx, string name)
-//@requires s_is_local_ctx(ctx);
+s_var_info_t *s_lookup_var(s_session_t *session, string name)
+//@requires s_is_local_session(session);
 {
-    for (int i = v_length(ctx->var_stack) - 1; i > -1; i--) {
-        om_map_t *scope = (om_map_t *) v_get(ctx->var_stack, i);
+    for (int i = v_length(session->var_stack) - 1; i > -1; i--) {
+        om_map_t *scope = (om_map_t *) v_get(session->var_stack, i);
         s_var_info_t *info = (s_var_info_t *) om_get_s(scope, name);
 
         if (info != NULL) return info;
     }
 
-    __s_set_err(ctx, format("variable \"%s\" is not defined", name));
+    __s_set_err(session, format("variable \"%s\" is not defined", name));
     return NULL;
 }
 
@@ -104,9 +144,32 @@ s_var_info_t *s_lookup_var(s_ctx_t *ctx, string name)
 
 // BEGIN pass
 
-s_ctx_t *s_semantics_pass(ast_program_t *prog)
+void s_pass_struct(s_session_t *session, ast_struct_t *strct);
+void s_pass_alias(s_session_t *session, ast_alias_t *alias);
+void s_pass_func(s_session_t *session, ast_func_t *func);
+
+e_error_t *s_semantics_pass(s_ctx_t *ctx, ast_program_t *prog)
 //@requires prog != NULL;
+//@requires s_is_ctx(ctx);
 {
+    s_session_t *session = s_new_session(ctx);
+
+    for (int i = 0; i < v_length(prog->globs); i++) {
+        ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
+
+        if (glob->type == 'F') {
+
+        } else if (glob->type == 'S') {
+
+        } else if (glob->type == 'T') {
+
+        } else {
+            error("unimplemented AST type");
+        }
+
+        if (e_has_err(session->err)) return session->err;
+    }
+
     return NULL;
 }
 
