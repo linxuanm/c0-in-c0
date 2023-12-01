@@ -4,9 +4,14 @@
 
 /*
     This file contains a ordered map implemented with red-black tree.
+
+    NOTE: If you are using `om_map_t` created by `om_create_map` as a set, set
+    all the values to `NULL`. This is important as this is what is done by the
+    set operation functions `om_union` and `om_intersection`.
 */
 
 typedef int key_cmp_t(void *a, void *b);
+typedef void *om_cpfunc_t(void *ptr);
 
 struct om_node_t {
     void *key;
@@ -607,6 +612,45 @@ string[] om_get_keys_string(om_map_t *tree)
     return output;
 }
 
+om_node_t *__om_copy_node(om_node_t *node, om_cpfunc_t *key, om_cpfunc_t *val)
+//@requires key != NULL;
+//@requires val != NULL;
+{
+    if (node == NULL) return NULL;
+
+    om_node_t *new = alloc(om_node_t);
+    new->is_red = node->is_red;
+    new->key = (*key)(node->key);
+    new->value = (*val)(node->value);
+
+    new->left = __om_copy_node(node->left, key, val);
+    if (new->left != NULL) new->left->parent = new;
+
+    new->right = __om_copy_node(node->right, key, val);
+    if (new->right != NULL) new->right->parent = new;
+
+    return new;
+}
+
+void *__om_no_copy(void *val) { return val; }
+
+om_map_t *om_copy(om_map_t *tree, om_cpfunc_t *key_func, om_cpfunc_t *val_func)
+//@requires __om_is_valid_tree(tree);
+//@ensures __om_is_valid_tree(\result);
+{
+    om_map_t *res = alloc(om_map_t);
+    res->allow_repeat = tree->allow_repeat;
+    res->cmp_func = tree->cmp_func;
+    res->size = tree->size;
+
+    if (key_func == NULL) key_func = &__om_no_copy;
+    if (val_func == NULL) val_func = &__om_no_copy;
+
+    res->root = __om_copy_node(tree->root, key_func, val_func);
+
+    return res;
+}
+
 // END misc
 
 // BEGIN debug
@@ -723,14 +767,6 @@ int om_peek_max_i(om_map_t *tree)
     return * (int *) max->value;
 }
 
-bool om_contains_i(om_map_t *tree, int value)
-//@requires __om_is_valid_tree(tree);
-{
-    int *ptr = alloc(int);
-    *ptr = value;
-    return __om_find_node(tree, tree->root, (void *) ptr) != NULL;
-}
-
 // END queue shorthand
 
 // BEGIN map shorthand
@@ -746,6 +782,16 @@ void *om_get(om_map_t *tree, void *key)
 //@requires __om_is_valid_tree(tree);
 {
     return __om_find_node(tree, tree->root, key)->value;
+}
+
+void om_insert_i(om_map_t *tree, int key, void *value)
+//@requires __om_is_valid_tree(tree);
+//@ensures __om_is_valid_tree(tree);
+{
+    int *k_ptr = alloc(int);
+    *k_ptr = key;
+
+    __om_insert_kv_pair(tree, (void *) k_ptr, value);
 }
 
 void om_insert_si(om_map_t *tree, string key, int value)
@@ -841,3 +887,27 @@ bool om_delete_i(om_map_t *tree, int value)
 }
 
 // END map shorthand
+
+// BEGIN set shorthand
+
+// uses the comparison function  from `a`
+om_map_t *om_union(om_map_t *a, om_map_t *b)
+//@requires __om_is_valid_tree(a) && !a->allow_repeat;
+//@requires __om_is_valid_tree(b) && !b->allow_repeat;
+{
+    om_map_t *union = om_create_map(a->cmp_func);
+    void *[] a_keys = om_get_keys(a);
+    void *[] b_keys = om_get_keys(b);
+
+    for (int i = 0; i < om_size(a); i++) {
+        __om_insert_kv_pair(union, a_keys[i], NULL);
+    }
+
+    for (int i = 0; i < om_size(b); i++) {
+        __om_insert_kv_pair(union, b_keys[i], NULL);
+    }
+
+    return union;
+}
+
+// END set shorthand
