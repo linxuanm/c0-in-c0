@@ -1,26 +1,44 @@
+// BEGIN setups
+
 struct s_warn_t {
     int row;
     string msg;
 };
 typedef struct s_warn_t s_warn_t;
 
+// END setups
+
+// BEGIN ast info
+
 struct s_var_info_t {
     ast_type_t *type;
+    string name;
 };
 typedef struct s_var_info_t s_var_info_t;
+
+struct s_strct_info_t {
+    bool implemented;
+
+    om_map_t *fld_to_idx; // string -> int
+    vec_t *fld_types; // [ast_type_t *]
+    vec_t *fld_names; // [string]
+};
+typedef struct s_strct_info_t s_strct_info_t;
 
 // TODO: pureness checking
 struct s_func_info_t {
     bool implemented;
 
     ast_type_t *ret_type;
-    vec_t *param_types; // [ast_type_t *]
-    om_map_t *local_vars; // string -> int
+    vec_t *prm_types; // [ast_type_t *]
+    vec_t *prm_names; // [string]
 
     // TODO
     bool pure;
 };
 typedef struct s_func_info_t s_func_info_t;
+
+// END ast info
 
 struct s_scope_t {
     om_map_t *var_map; // string -> s_var_info_t *
@@ -144,9 +162,26 @@ s_var_info_t *s_lookup_var(s_session_t *session, string name)
 
 // BEGIN pass
 
-void s_pass_struct(s_session_t *session, ast_struct_t *strct);
-void s_pass_alias(s_session_t *session, ast_alias_t *alias);
-void s_pass_func(s_session_t *session, ast_func_t *func);
+void s_pass_struct(s_session_t *session, ast_struct_t *strct)
+//@requires s_is_session(session);
+{
+    om_map_t *structs = session->strct_map;
+    s_strct_info_t *info;
+    if (om_has_s(structs, strct->name)) {
+
+    } else {
+        info = alloc(s_strct_info_t);
+        om_insert_s()
+    }
+}
+
+void s_pass_alias(s_session_t *session, ast_alias_t *alias) {
+
+}
+
+void s_pass_func(s_session_t *session, ast_func_t *func) {
+
+}
 
 e_error_t *s_semantics_pass(s_ctx_t *ctx, ast_program_t *prog)
 //@requires prog != NULL;
@@ -158,11 +193,11 @@ e_error_t *s_semantics_pass(s_ctx_t *ctx, ast_program_t *prog)
         ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
 
         if (glob->type == 'F') {
-
+            s_pass_func(session, glob->func);
         } else if (glob->type == 'S') {
-
+            s_pass_struct(session, glob->struc);
         } else if (glob->type == 'T') {
-
+            s_pass_alias(session, glob->alias);
         } else {
             error("unimplemented AST type");
         }
