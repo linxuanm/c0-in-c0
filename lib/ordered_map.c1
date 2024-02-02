@@ -794,6 +794,16 @@ void om_insert_i(om_map_t *tree, int key, void *value)
     __om_insert_kv_pair(tree, (void *) k_ptr, value);
 }
 
+void om_insert_s(om_map_t *tree, string key, void *value)
+//@requires __om_is_valid_tree(tree);
+//@ensures __om_is_valid_tree(tree);
+{
+    string *k_ptr = alloc(string);
+    *k_ptr = key;
+
+    __om_insert_kv_pair(tree, (void *) k_ptr, value);
+}
+
 void om_insert_si(om_map_t *tree, string key, int value)
 //@requires __om_is_valid_tree(tree);
 //@ensures __om_is_valid_tree(tree);
