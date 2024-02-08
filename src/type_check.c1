@@ -2,7 +2,7 @@ ast_type_t *t_deref_alias(om_map_t *alias_map, ast_type_t *type)
 //@requires __om_is_valid_tree(alias_map);
 //@requires type != NULL;
 {
-    while (type->type == 'D') {
+    while (type != NULL && type->type == 'D') {
         type = (ast_type_t *) om_get_s(alias_map, type->iden);
     }
 
@@ -30,10 +30,41 @@ bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
     }
 }
 
+// does not check for whether a struct is defined (as opposed to forward declared);
+// that is checked on the use sites of `alloc` while calculating allocation size
+bool t_is_valid_type(om_map_t *alias_map, om_map_t *struct_map, ast_type_t *type)
+//@requires __om_is_valid_tree(alias_map);
+//@requires __om_is_valid_tree(struct_map);
+//@requires type != NULL;
+{
+    if (
+        type->type == 'I' || type->type == 'B' ||
+        type->type == 'S' || type->type == 'C'
+    ) return true;
+
+    if (type->type == 'V') return false;
+    if (type->type == 'D') {
+        ast_type_t *actual = t_deref_alias(alias_map, type);
+        if (actual == NULL) return false;
+
+        return t_is_valid_type(alias_map, struct_map, actual);
+    }
+
+    if (type->type == 'X') return om_has_s(struct_map, type->iden);
+    if (type->type == 'A' || type->type == 'P') {
+        return t_is_valid_type(alias_map, struct_map, type->content);
+    }
+
+    error("not implemented type");
+}
+
 bool t_is_small_type(om_map_t *alias_map, ast_type_t *type)
 //@requires type != NULL;
 {
     ast_type_t *actual = t_deref_alias(alias_map, type);
+
+    assert(actual != NULL);
+
     return actual->type == 'I' || actual->type == 'B'
         || actual->type == 'C' || actual->type == 'S'
         || actual->type == 'A' || actual->type == 'P';

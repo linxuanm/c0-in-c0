@@ -132,6 +132,13 @@ void __s_set_err(s_session_t *session, string msg)
     session->err = e_create_error(msg, NULL);
 }
 
+void __s_set_err_pos(s_session_t *session, fr_pos_t *pos, string msg)
+//@requires s_is_session(session);
+//@requires !e_has_err(session->err);
+{
+    session->err = e_create_error(msg, pos);
+}
+
 s_func_info_t *s_lookup_func(s_session_t *session, string name)
 //@requires s_is_session(session);
 {
@@ -158,29 +165,86 @@ s_var_info_t *s_lookup_var(s_session_t *session, string name)
     return NULL;
 }
 
+bool __s_assert_valid_type(s_session_t *session, ast_type_t *type)
+//@requires s_is_session(session);
+//@requires type != NULL;
+{
+    if (!t_is_valid_type(session->alias_map, session->strct_map, type)) {
+        __s_set_err_pos(session, type->pos, "invalid type");
+        return false;
+    }
+
+    return true;
+}
+
 // END helper functions
 
 // BEGIN pass
 
-void s_pass_struct(s_session_t *session, ast_struct_t *strct)
+bool s_pass_struct(s_session_t *session, ast_struct_t *strct)
 //@requires s_is_session(session);
 {
     om_map_t *structs = session->strct_map;
     s_strct_info_t *info;
     if (om_has_s(structs, strct->name)) {
-
+        info = (s_strct_info_t *) om_get_s(structs, strct->name);
     } else {
         info = alloc(s_strct_info_t);
-        om_insert_s()
+        info->implemented = false;
+        om_insert_s(structs, strct->name, (void *) info);
     }
+
+    if (!strct->defined) return true;
+
+    if (info->implemented) {
+        __s_set_err_pos(
+            session, strct->pos,
+            format("struct \"%s\" is defined twice", strct->name)
+        );
+        return false;
+    }
+
+    info->implemented = true;
+    info->fld_to_idx = om_create_map(&string_ptr_compare);
+    info->fld_names = v_create_vector();
+    info->fld_types = v_create_vector();
+
+    for (int i = 0; i < v_length(strct->mem_types); i++) {
+        string fld_name = v_get_string(info->fld_names, i);
+
+        if (om_has_s(info->fld_to_idx, fld_name)) {
+            __s_set_err_pos(
+                session, strct->pos,
+                format("multiple definition of \"%s\"", fld_name)
+            );
+            return false;
+        }
+
+        ast_type_t *fld_type = (ast_type_t *) v_get(info->fld_types, i);
+        if (!t_is_small_type(session->alias_map, fld_type)) {
+            __s_set_err_pos(
+                session, strct->pos,
+                format("field \"%s\" is not a small type", fld_name)
+            );
+            return false;
+        }
+    }
+
+    return true;
 }
 
-void s_pass_alias(s_session_t *session, ast_alias_t *alias) {
+bool s_pass_alias(s_session_t *session, ast_alias_t *alias) {
 
+    // TODO: alias pass
+
+    return true;
 }
 
-void s_pass_func(s_session_t *session, ast_func_t *func) {
+bool s_pass_func(s_session_t *session, ast_func_t *func) {
 
+    // TODO: alias pass
+
+    return true;
 }
 
 e_error_t *s_semantics_pass(s_ctx_t *ctx, ast_program_t *prog)
@@ -193,16 +257,14 @@ e_error_t *s_semantics_pass(s_ctx_t *ctx, ast_program_t *prog)
         ast_glob_t *glob = (ast_glob_t *) v_get(prog->globs, i);
 
         if (glob->type == 'F') {
-            s_pass_func(session, glob->func);
+            if (!s_pass_func(session, glob->func)) return session->err;
         } else if (glob->type == 'S') {
-            s_pass_struct(session, glob->struc);
+            if (!s_pass_struct(session, glob->struc)) return session->err;
         } else if (glob->type == 'T') {
-            s_pass_alias(session, glob->alias);
+            if (!s_pass_alias(session, glob->alias)) return session->err;
         } else {
             error("unimplemented AST type");
         }
-
-        if (e_has_err(session->err)) return session->err;
     }
 
     return NULL;
