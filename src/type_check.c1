@@ -30,9 +30,11 @@ bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
     }
 }
 
-// does not check for whether a struct is defined (as opposed to forward declared);
-// that is checked on the use sites of `alloc` while calculating allocation size
-bool t_is_valid_type(om_map_t *alias_map, om_map_t *struct_map, ast_type_t *type)
+// does not check for whether a struct is defined (i.e. not forward declared);
+// that is checked on use sites of `alloc` while calculating allocation size
+bool t_is_valid_type(
+    om_map_t *alias_map, om_map_t *struct_map, ast_type_t *type
+)
 //@requires __om_is_valid_tree(alias_map);
 //@requires __om_is_valid_tree(struct_map);
 //@requires type != NULL;

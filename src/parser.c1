@@ -406,7 +406,8 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
             if (!om_has_s(ctx->types, string_join("$", iden->str))) {
                 __p_set_err_at(
-                    ctx, format("struct \"%s\" is not defined", iden->str), iden
+                    ctx, format("struct \"%s\" is not defined", iden->str),
+                    iden
                 );
                 return NULL;
             }
@@ -1090,7 +1091,8 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "typedef");
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && fr_has_pos_alias(\result) && !e_has_err(ctx->err);
+        || \result != NULL
+        && fr_has_pos_alias(\result) && !e_has_err(ctx->err);
 @*/
 {
     l_token_t *typed_tok = __p_next(ctx);
@@ -1119,7 +1121,8 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 //@requires !__p_is_eof(ctx);
 //@requires __p_match(__p_peek(ctx), 'K', "struct");
 /*@ensures \result == NULL && e_has_err(ctx->err)
-        || \result != NULL && fr_has_pos_strct(\result) && !e_has_err(ctx->err);
+        || \result != NULL
+        && fr_has_pos_strct(\result) && !e_has_err(ctx->err);
 @*/
 {
     __p_next(ctx);

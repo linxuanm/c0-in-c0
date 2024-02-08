@@ -311,7 +311,6 @@ void pt_test_simp_basic() {
     ctx = pt_make_ctx("123 = -69", "");
     stmt = __p_parse_simp(ctx);
     assert(stmt == NULL);
-    //printf("Line %d, Col %d: %s\n", ctx->err_row, ctx->err_col, ctx->err_msg);
 
     ctx = pt_make_ctx("foo(hello)", "");
     stmt = __p_parse_simp(ctx);
