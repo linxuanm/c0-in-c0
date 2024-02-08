@@ -1,0 +1,8 @@
+struct hello_WORLD {
+    int test;
+    string happy_happy_happy;
+    string[] banana;
+
+    // error here
+    struct this_type_doesnt_exist_just_like_ur_social_life *foo;
+};

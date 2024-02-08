@@ -1,0 +1,9 @@
+int main() {
+    return 0;
+}
+
+struct han_liu_jia_bei {
+    int hello;
+    string test;
+    string hello;
+};
