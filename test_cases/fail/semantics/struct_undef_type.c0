@@ -3,6 +3,6 @@ struct hello_WORLD {
     string happy_happy_happy;
     string[] banana;
 
-    // error here
-    struct this_type_doesnt_exist_just_like_ur_social_life *foo;
+    // type error here
+    struct this_type_doesnt_exist_just_like_ur_girlfriend *foo;
 };

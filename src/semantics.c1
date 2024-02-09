@@ -179,6 +179,15 @@ bool __s_assert_valid_type(s_session_t *session, ast_type_t *type)
 
 // END helper functions
 
+// BEGIN visitors
+
+// each visitor is responsible for performing static check on the given AST
+// and return the transformed AST (or null if error occurs)
+
+
+
+// END visitors
+
 // BEGIN pass
 
 bool s_pass_struct(s_session_t *session, ast_struct_t *strct)
