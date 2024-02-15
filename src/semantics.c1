@@ -67,12 +67,12 @@ void s_set_err(s_glob_ctx_t *gctx, int err_type, string msg)
     gctx->err = err;
 }
 
-void s_set_err_at(s_glob_ctx_t *ctx, int err_type, string msg, l_token_t *tok)
+void s_set_err_at(s_glob_ctx_t *ctx, int err_type, string msg, u_pos_t *pos)
 //@requires __s_is_glob_ctx(ctx);
 //@requires !e_has_err(ctx->err);
 //@ensures e_has_err(ctx->err);
 {
-    ctx->err = e_create_error(err_type, msg, tok->pos);
+    ctx->err = e_create_error(err_type, msg, pos);
 }
 
 // END error
@@ -100,6 +100,23 @@ bool s_has_decl_struct(s_glob_ctx_t *gctx, string name)
 //@requires __s_is_glob_ctx(gctx);
 {
     return om_has_s(gctx->strcts, name);
+}
+
+bool s_add_decl_alias(s_glob_ctx_t *gctx, string name, ast_alias_t *alias)
+//@requires __s_is_glob_ctx(gctx);
+//@ensures \result && !s_has_err(gctx) || !\result && s_has_err(gctx);
+{
+    if (om_has_s(gctx->aliases, name)) {
+        s_set_err_at(
+            gctx, 12,
+            format("duplicate typedef declaration \"%s\"", name),
+            alias->pos
+        );
+        return false;
+    }
+
+    om_insert_s(gctx->aliases, name, (void *) alias);
+    return true;
 }
 
 // END checks

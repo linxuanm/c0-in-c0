@@ -391,7 +391,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
     } else if (tok->type == 'I') {
         // sanity check: first-set of TYPE already ensured this
-        assert(__p_is_type_name(tok->str, ctx));
+        assert(s_has_decl_alias(ctx->glob_ctx, tok->str));
 
         type->type = 'D';
         type->iden = tok->str;
@@ -1090,7 +1090,7 @@ ast_alias_t *__p_parse_alias(p_ctx_t *ctx)
     if (!__p_expect_sep(";", ctx)) return NULL;
     alias->pos = fr_merge_pos(typed_tok->pos, __p_last_pos(ctx));
 
-    om_insert_si(ctx->types, alias->name, 0);
+    if (!s_add_decl_alias(ctx->glob_ctx, alias->name, alias)) return NULL;
 
     return alias;
 }
