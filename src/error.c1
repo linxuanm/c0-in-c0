@@ -3,12 +3,41 @@
 struct e_error_t {
     u_pos_t *pos; // can be NULL (in case position isn't valid)
     string err_msg;
+
+    /*
+        Error type enum (mainly for testing/integration purpose):
+
+        General front-end error:
+        - 0: lexer error
+        - 1: parse error (syntax error)
+
+        Semantic error:
+        - 10: duplicate declaration (variable)
+        - 11: duplicate declaration (struct)
+        - 12: duplicate declaration (typedef)
+        - 13: duplicate declaration (function)
+
+        - 20: undefined variable
+        - 21: undefined struct
+        - 22: undefined typedef
+        - 23: undefined function
+
+        - 30: function call parameter mismatch (no. params mismatch)
+        - 31: type mismatch
+        - 32: requires small type
+        
+        - 40: potential use of uninitialized variable
+        - 41: missing return value
+        - 42: misplaced break/continue
+     */
+    int err_type;
 };
 typedef struct e_error_t e_error_t;
 
-e_error_t *e_create_error(string err_msg, u_pos_t *pos) {
+e_error_t *e_create_error(int err_type, string err_msg, u_pos_t *pos) {
     e_error_t *err = alloc(e_error_t);
     err->pos = pos;
+    err->err_type = err_type;
     err->err_msg = err_msg;
 
     return err;

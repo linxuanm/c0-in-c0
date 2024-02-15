@@ -69,8 +69,8 @@ u_pos_t *__p_last_pos(p_ctx_t *ctx)
     return ctx->tokens[ctx->pc - 1]->pos;
 }
 
-void __p_set_err(p_ctx_t *ctx, string msg);
-void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok);
+void __p_set_err(p_ctx_t *ctx, int err_type, string msg);
+void __p_set_err_at(p_ctx_t *ctx, int err_type, string msg, l_token_t *tok);
 void __p_eof_err(p_ctx_t *ctx);
 bool __p_expect(char type, string word, p_ctx_t *ctx);
 bool __p_expect_kw(string kwd, p_ctx_t *ctx);
@@ -79,7 +79,7 @@ l_token_t *__p_peek(p_ctx_t *ctx);
 l_token_t *__p_next(p_ctx_t *ctx);
 bool __p_can_be_var(string var, p_ctx_t *ctx);
 
-void __p_set_err(p_ctx_t *ctx, string msg)
+void __p_set_err(p_ctx_t *ctx, int err_type, string msg)
 //@requires __p_is_ctx(ctx);
 //@requires !e_has_err(ctx->err);
 //@ensures e_has_err(ctx->err);
@@ -90,16 +90,16 @@ void __p_set_err(p_ctx_t *ctx, string msg)
         pos = curr->pos;
     }
 
-    e_error_t *err = e_create_error(msg, pos);
+    e_error_t *err = e_create_error(err_type, msg, pos);
     ctx->err = err;
 }
 
-void __p_set_err_at(p_ctx_t *ctx, string msg, l_token_t *tok)
+void __p_set_err_at(p_ctx_t *ctx, int err_type, string msg, l_token_t *tok)
 //@requires __p_is_ctx(ctx);
 //@requires !e_has_err(ctx->err);
 //@ensures e_has_err(ctx->err);
 {
-    ctx->err = e_create_error(msg, tok->pos);
+    ctx->err = e_create_error(err_type, msg, tok->pos);
 }
 
 void __p_eof_err(p_ctx_t *ctx)
@@ -107,7 +107,7 @@ void __p_eof_err(p_ctx_t *ctx)
 //@requires !e_has_err(ctx->err);
 //@ensures e_has_err(ctx->err);
 {
-    __p_set_err(ctx, "unexpected end of file");
+    __p_set_err(ctx, 1, "unexpected end of file");
 }
 
 bool __p_match(l_token_t *tok, char type, string word) {
@@ -133,7 +133,7 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
             u_tok_type_to_readable(type), word,
             u_tok_type_to_readable(tok->type), tok->str
         );
-        __p_set_err_at(ctx, err_msg, tok);
+        __p_set_err_at(ctx, 1, err_msg, tok);
 
         return false;
     }
@@ -159,13 +159,14 @@ l_token_t *__p_expect_id_tok(p_ctx_t *ctx, bool is_var)
 //@requires __p_is_ctx(ctx);
 {
     if (__p_is_eof(ctx) || __p_peek(ctx)->type != 'I') {
-        __p_set_err(ctx, "expecting identifier");
+        __p_set_err(ctx, 1, "expecting identifier");
         return NULL;
     }
     l_token_t *tok = __p_next(ctx);
     if (is_var && !__p_can_be_var(tok->str, ctx)) {
         __p_set_err_at(
             ctx,
+            1, 
             format("expecting variable/function name, not \"%s\"", tok->str),
             tok
         );
@@ -332,7 +333,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx);
 
 ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
     if (!__p_fset_exp(ctx)) {
-        __p_set_err(ctx, "expecting expression");
+        __p_set_err(ctx, 1, "expecting expression");
         return NULL;
     }
 
@@ -341,7 +342,7 @@ ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
 
 ast_type_t *__p_expect_type(p_ctx_t *ctx) {
     if (!__p_fset_type(ctx)) {
-        __p_set_err(ctx, "expecting type");
+        __p_set_err(ctx, 1, "expecting type");
         return NULL;    
     }
 
@@ -350,7 +351,7 @@ ast_type_t *__p_expect_type(p_ctx_t *ctx) {
 
 ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
     if (!__p_fset_stmt(ctx)) {
-        __p_set_err(ctx, "expecting statement");
+        __p_set_err(ctx, 1, "expecting statement");
         return NULL;
     }
 
@@ -359,7 +360,7 @@ ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
 
 ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
     if (!__p_fset_exp(ctx)) {
-        __p_set_err(ctx, "expecting expression");
+        __p_set_err(ctx, 1, "expecting expression");
         return NULL;
     }
 
@@ -368,7 +369,7 @@ ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
 
 ast_stmt_t *__p_expect_simp(p_ctx_t *ctx) {
     if (!__p_fset_stmt(ctx)) {
-        __p_set_err(ctx, "expecting (simple) statement");
+        __p_set_err(ctx, 1, "expecting (simple) statement");
         return NULL;
     }
 
@@ -406,7 +407,8 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
             if (!om_has_s(ctx->types, string_join("$", iden->str))) {
                 __p_set_err_at(
-                    ctx, format("struct \"%s\" is not defined", iden->str),
+                    ctx, 1,
+                    format("struct \"%s\" is not defined", iden->str),
                     iden
                 );
                 return NULL;
@@ -761,7 +763,7 @@ bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp, l_token_t *tok)
     }
 
     if (!is_lv) {
-        __p_set_err_at(ctx, "LHS of assignment must be a left value", tok);
+        __p_set_err_at(ctx, 1, "LHS of assignment must be a left value", tok);
     }
 
     return is_lv;
@@ -826,7 +828,11 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         l_token_t *id_tok = __p_next(ctx);
         if (id_tok->type != 'I' || !__p_can_be_var(id_tok->str, ctx)) {
-            __p_set_err_at(ctx, "expecting identifier in declaration", id_tok);
+            __p_set_err_at(
+                ctx, 1,
+                "expecting identifier in declaration",
+                id_tok
+            );
             return NULL;
         }
 
@@ -1205,7 +1211,7 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             if (func == NULL) return NULL;
             glob->func = func;
         } else {
-            __p_set_err(ctx, "expecting typedef, struct or function def");
+            __p_set_err(ctx, 1, "expecting typedef, struct or function def");
             return NULL;
         }
 
