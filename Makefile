@@ -6,7 +6,7 @@ CFLAGS = -d -w
 # repo settings
 INIT = README.txt
 SRC_PATH = src
-C0_UTIL_PATH = libs/c0-utils
+C0_UTIL_PATH = c0-utils
 
 # modules
 
