@@ -25,6 +25,8 @@ OBJ = ccc0
 
 .PHONY: clean init
 
+all: $(OBJ)
+
 $(OBJ): init
 	echo "Building (TODO: remove this)"
 
