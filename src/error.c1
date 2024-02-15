@@ -1,12 +1,12 @@
 #use <string>
 
 struct e_error_t {
-    fr_pos_t *pos; // can be NULL (in case position isn't valid)
+    u_pos_t *pos; // can be NULL (in case position isn't valid)
     string err_msg;
 };
 typedef struct e_error_t e_error_t;
 
-e_error_t *e_create_error(string err_msg, fr_pos_t *pos) {
+e_error_t *e_create_error(string err_msg, u_pos_t *pos) {
     e_error_t *err = alloc(e_error_t);
     err->pos = pos;
     err->err_msg = err_msg;

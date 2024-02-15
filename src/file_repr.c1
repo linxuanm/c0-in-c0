@@ -12,8 +12,8 @@ struct fr_file_t {
 };
 typedef struct fr_file_t fr_file_t;
 
-fr_pos_t *fr_create_pos(int start_r, int start_c, int end_r, int end_c) {
-    fr_pos_t *pos = alloc(fr_pos_t);
+u_pos_t *fr_create_pos(int start_r, int start_c, int end_r, int end_c) {
+    u_pos_t *pos = alloc(u_pos_t);
     pos->start_row = start_r;
     pos->start_col = start_c;
     pos->end_row = end_r;
@@ -22,12 +22,12 @@ fr_pos_t *fr_create_pos(int start_r, int start_c, int end_r, int end_c) {
     return pos;
 }
 
-fr_pos_t *fr_merge_pos(fr_pos_t *a, fr_pos_t *b)
+u_pos_t *fr_merge_pos(u_pos_t *a, u_pos_t *b)
 /*@requires a->start_row == b->end_row && a->start_col <= b->start_col ||
             a->start_row < b->end_row;
 @*/
 {
-    fr_pos_t *pos = alloc(fr_pos_t);
+    u_pos_t *pos = alloc(u_pos_t);
     pos->start_row = a->start_row;
     pos->start_col = a->start_col;
     pos->end_row = b->end_row;
@@ -36,7 +36,7 @@ fr_pos_t *fr_merge_pos(fr_pos_t *a, fr_pos_t *b)
     return pos;
 }
 
-bool fr_is_valid_pos(fr_pos_t *pos) {
+bool fr_is_valid_pos(u_pos_t *pos) {
     return pos != NULL
         && pos->start_row > 0 && pos->start_col > 0
         && (pos->end_row == pos->start_row && pos->end_col >= pos->start_col

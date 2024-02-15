@@ -63,7 +63,7 @@ p_ctx_t *p_create_ctx(vec_t *tokens, om_map_t *type_ctx)
 // BEGIN shorthands
 
 // hacky "get-last-token-to-assign-the-referencing-position-of-each-AST"
-fr_pos_t *__p_last_pos(p_ctx_t *ctx)
+u_pos_t *__p_last_pos(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx) && ctx->pc > 0;
 {
     return ctx->tokens[ctx->pc - 1]->pos;
@@ -84,7 +84,7 @@ void __p_set_err(p_ctx_t *ctx, string msg)
 //@requires !e_has_err(ctx->err);
 //@ensures e_has_err(ctx->err);
 {
-    fr_pos_t *pos = NULL;
+    u_pos_t *pos = NULL;
     if (!__p_is_eof(ctx)) {
         l_token_t *curr = __p_peek(ctx);
         pos = curr->pos;

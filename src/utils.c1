@@ -1,10 +1,12 @@
 #use <string>
 
-struct src_code_t {
-    string path;
-    string code;
+struct u_pos_t {
+    int start_row;
+    int start_col;
+    int end_row;
+    int end_col;
 };
-typedef struct src_code_t src_code_t;
+typedef struct u_pos_t u_pos_t;
 
 bool u_is_keyword(string word) {
     return string_equal(word, "int")
