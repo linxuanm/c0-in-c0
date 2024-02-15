@@ -1,20 +1,14 @@
 #use <parse>
 
 struct p_ctx_t {
-    // file info
-    string file_path;
 
-    // declarative information
-    om_map_t *types;
-    vec_t *libs;
+    // context
+    s_glob_ctx_t *glob_ctx;
 
     // token tracking
     int n_tokens;
     int pc;
     l_token_t *[] tokens;
-
-    // error handling (propagate instead of throwing)
-    e_error_t *err;
 };
 typedef struct p_ctx_t p_ctx_t;
 
@@ -22,11 +16,10 @@ typedef struct p_ctx_t p_ctx_t;
 
 bool __p_is_ctx(p_ctx_t *ctx) {
     if (ctx == NULL) return false;
-    if (!__om_is_valid_tree(ctx->types)) return false;
     
     if (ctx->n_tokens < 0) return false;
     if (!(0 <= ctx->pc && ctx->pc <= ctx->n_tokens)) return false;
-    if (!v_is_vector(ctx->libs)) return false;
+    if (!__s_is_glob_ctx(ctx->glob_ctx)) return false;
     //@assert ctx->n_tokens <= \length(ctx->tokens);
 
     return true;
@@ -46,8 +39,7 @@ p_ctx_t *p_create_ctx(vec_t *tokens, om_map_t *type_ctx)
 //@ensures __p_is_ctx(\result);
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
-    ctx->types = type_ctx;
-    ctx->libs = v_create_vector();
+    ctx->glob_ctx = s_create_glob_ctx();
 
     ctx->n_tokens = v_length(tokens);
     ctx->tokens = alloc_array(l_token_t *, ctx->n_tokens);
@@ -79,35 +71,12 @@ l_token_t *__p_peek(p_ctx_t *ctx);
 l_token_t *__p_next(p_ctx_t *ctx);
 bool __p_can_be_var(string var, p_ctx_t *ctx);
 
-void __p_set_err(p_ctx_t *ctx, int err_type, string msg)
-//@requires __p_is_ctx(ctx);
-//@requires !e_has_err(ctx->err);
-//@ensures e_has_err(ctx->err);
-{
-    u_pos_t *pos = NULL;
-    if (!__p_is_eof(ctx)) {
-        l_token_t *curr = __p_peek(ctx);
-        pos = curr->pos;
-    }
-
-    e_error_t *err = e_create_error(err_type, msg, pos);
-    ctx->err = err;
-}
-
-void __p_set_err_at(p_ctx_t *ctx, int err_type, string msg, l_token_t *tok)
-//@requires __p_is_ctx(ctx);
-//@requires !e_has_err(ctx->err);
-//@ensures e_has_err(ctx->err);
-{
-    ctx->err = e_create_error(err_type, msg, tok->pos);
-}
-
 void __p_eof_err(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
-//@requires !e_has_err(ctx->err);
-//@ensures e_has_err(ctx->err);
+//@requires !s_has_err(ctx->glob_ctx);
+//@ensures s_has_err(ctx->glob_ctx);
 {
-    __p_set_err(ctx, 1, "unexpected end of file");
+    s_set_err(ctx, 1, "unexpected end of file");
 }
 
 bool __p_match(l_token_t *tok, char type, string word) {

@@ -14,7 +14,8 @@ SRC_MISC = \
 	$(SRC_PATH)/utils.c1 $(SRC_PATH)/file_io.c1 $(SRC_PATH)/error.c1 \
 	$(SRC_PATH)/ast.c1 $(SRC_PATH)/file_repr.c1 $(SRC_PATH)/ast_utils.c1
 SRC_FRONTEND = \
-	$(SRC_PATH)/lexer.c1 $(SRC_PATH)/type_check.c1 $(SRC_PATH)/parser.c1
+	$(SRC_PATH)/lexer.c1 $(SRC_PATH)/semantics.c1 $(SRC_PATH)/ast_visitor.c1 \
+	$(SRC_PATH)/type_check.c1 $(SRC_PATH)/parser.c1
 SRC_MAIN = $(SRC_PATH)/compile.c1 $(SRC_PATH)/main.c1
 
 # build settings
