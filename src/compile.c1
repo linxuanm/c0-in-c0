@@ -76,13 +76,6 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
 
         return __c_exit();
     }
-
-    // static checks
-    s_ctx_t *semantics_ctx = s_empty_ctx();
-    for (int i = 0; i < v_length(file_reprs); i++) {
-        fr_file_t *file = (fr_file_t *) v_get(file_reprs, i);
-        
-    }
     
     println("Success");
 
