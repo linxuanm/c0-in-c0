@@ -87,3 +87,19 @@ s_glob_ctx_t *s_create_glob_ctx()
 
     return gctx;
 }
+
+// BEGIN checks
+
+bool s_has_decl_alias(s_glob_ctx_t *gctx, string name)
+//@requires __s_is_glob_ctx(gctx);
+{
+    return om_has_s(gctx->aliases, name);
+}
+
+bool s_has_decl_struct(s_glob_ctx_t *gctx, string name)
+//@requires __s_is_glob_ctx(gctx);
+{
+    return om_has_s(gctx->strcts, name);
+}
+
+// END checks
