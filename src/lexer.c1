@@ -24,10 +24,9 @@ string l_regex_or(string a, string b) {
     Tokenizes the given string and populates the `tokens` field of the file
     representation.
 */
-e_error_t *l_tokenize(fr_file_t *repr) {
+e_error_t *l_tokenize(s_glob_ctx_t *gctx, fr_file_t *repr) {
     int src_ptr = 0;
     vec_t *tokens = v_create_vector();
-    repr->libs = v_create_vector();
 
     // pieces
     string R_NUM = "0|[1-9][0-9]*|0[xX][0-9a-fA-F]+";
@@ -125,7 +124,7 @@ e_error_t *l_tokenize(fr_file_t *repr) {
             while (string_charat(matched, str_pc) != '>') str_pc++;
 
             string lib_str = string_sub(matched, begin_index, str_pc);
-            v_append_string(repr->libs, lib_str);
+            om_insert_s(gctx->libs, lib_str, NULL);
         }
 
         if (token_type != 'W' && token_type != 'U') {

@@ -45,32 +45,36 @@ void c_debug_tokens(vec_t *tokens) {
 }
 
 c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
+    s_glob_ctx_t *gctx = s_create_glob_ctx();
+
     for (int i = 0; i < v_length(file_reprs); i++) {
         fr_file_t *file = (fr_file_t *) v_get(file_reprs, i);
-        e_error_t *err = l_tokenize(file);
+        e_error_t *err = l_tokenize(gctx, file);
         if (e_has_err(err)) return __c_fail(err, file->path);
 
         // c_debug_tokens(file->tokens);
     }
 
-    om_map_t *type_ctx = p_empty_type_ctx();
     for (int i = 0; i < v_length(file_reprs); i++) {
         fr_file_t *file = (fr_file_t *) v_get(file_reprs, i);
-        e_error_t *err = p_parse_file(file, type_ctx);
+        e_error_t *err = p_parse_file(file, gctx);
         if (e_has_err(err)) return __c_fail(err, file->path);
     }
 
     if (params->dump_ast) {
+        println("// INCLUDED LIBS");
+
+        void *[] libs = alloc_array(void *, om_size(gctx->libs));
+        __om_collect_keys(gctx->libs->root, libs, 0);
+        for (int l = 0; l < om_size(gctx->libs); l++) {
+            printf("#use <%s>\n", * (string *) libs[l]);
+        }
+        if (!om_empty(gctx->libs)) println("");
+
         for (int i = 0; i < v_length(file_reprs); i++) {
             fr_file_t *file = (fr_file_t *) v_get(file_reprs, i);
 
             printf("// AST OF FILE \"%s\"\n\n", file->path);
-
-            for (int l = 0; l < v_length(file->libs); l++) {
-                printf("#use <%s>\n", * (string *) v_get(file->libs, l));
-            }
-            if (v_length(file->libs) != 0) println("");
-
             au_print_program(file->ast);
         }
 

@@ -24,8 +24,6 @@ void compile_files(string[] files, int n_files, cparams_t *params) {
 
         return;
     }
-
-
 }
 
 void print_padded(string s, int pad) {
@@ -56,6 +54,13 @@ void print_help() {
     print_padded("  --lib-path <path>", pad);
     print("  Set the path to the C0 libraries ");
     println("(default: \"/afs/andrew/course/15/122/lib\")");
+
+    print_padded("  --test", pad);
+    println("  Run in testing mode (skip codegen; return error code)");
+
+    print_padded("  --phase", pad);
+    print("  Specify the testing phase (requires --test) ");
+    println("['parse', 'semantic']");
 }
 
 int main() {
@@ -64,17 +69,23 @@ int main() {
     args_flag("--help",  help);
 
     bool *purity = alloc(bool);
-    args_flag("--no-purity-check",  purity);
+    args_flag("--no-purity-check", purity);
 
     bool *warning = alloc(bool);
-    args_flag("--warning",  warning);
+    args_flag("--warning", warning);
 
     bool *dump_ast = alloc(bool);
-    args_flag("--dump-ast",  dump_ast);
+    args_flag("--dump-ast", dump_ast);
 
     string *lib_path = alloc(string);
     *lib_path = "/afs/andrew/course/15/122/lib";
     args_string("--lib-path", lib_path);
+
+    bool *testing = alloc(bool);
+    args_flag("--test", testing);
+
+    string *phase = alloc(string);
+    args_string("--phase", phase);
 
     args_t args = args_parse();
     if (args->argc == 0) {
@@ -97,8 +108,18 @@ int main() {
         params->warining = *warning;
         params->dump_ast = *dump_ast;
         params->lib_path = *lib_path;
-        
-        compile_files(args->argv, args->argc, params);
+
+        if (string_length(*phase) == 0) {
+            *phase = "semantic";
+        } else if (!*testing) {
+            error("--phase requires --test");
+        }
+
+        if (*testing) {
+            
+        } else {
+            compile_files(args->argv, args->argc, params);
+        }
     }
 
     return 0;

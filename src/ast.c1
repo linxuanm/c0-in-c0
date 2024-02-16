@@ -196,7 +196,6 @@ struct ast_glob_t {
 typedef struct ast_glob_t ast_glob_t;
 
 struct ast_program_t {
-    vec_t *libs;
     vec_t *globs;
 };
 typedef struct ast_program_t ast_program_t;

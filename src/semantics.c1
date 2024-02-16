@@ -119,4 +119,24 @@ bool s_add_decl_alias(s_glob_ctx_t *gctx, string name, ast_alias_t *alias)
     return true;
 }
 
+bool s_add_decl_struct(s_glob_ctx_t *gctx, string name, ast_struct_t *strct)
+//@requires __s_is_glob_ctx(gctx);
+//@ensures \result && !s_has_err(gctx) || !\result && s_has_err(gctx);
+{
+    if (om_has_s(gctx->strcts, name)) {
+        ast_struct_t *prev = (ast_struct_t *) om_get_s(gctx->strcts, name);
+        if (prev->defined) {
+            s_set_err_at(
+                gctx, 11,
+                format("duplicate struct declaration \"%s\"", name),
+                strct->pos
+            );
+            return false;
+        }
+    }
+
+    om_insert_s(gctx->strcts, name, (void *) strct);
+    return true;
+}
+
 // END checks

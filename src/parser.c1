@@ -35,11 +35,11 @@ bool __p_is_eof(p_ctx_t *ctx)
 
 // BEGIN constructors
 
-p_ctx_t *p_create_ctx(vec_t *tokens, om_map_t *type_ctx)
+p_ctx_t *p_create_ctx(vec_t *tokens, s_glob_ctx_t *gctx)
 //@ensures __p_is_ctx(\result);
 {
     p_ctx_t *ctx = alloc(p_ctx_t);
-    ctx->glob_ctx = s_create_glob_ctx();
+    ctx->glob_ctx = gctx;
 
     ctx->n_tokens = v_length(tokens);
     ctx->tokens = alloc_array(l_token_t *, ctx->n_tokens);
@@ -61,8 +61,7 @@ u_pos_t *__p_last_pos(p_ctx_t *ctx)
     return ctx->tokens[ctx->pc - 1]->pos;
 }
 
-void __p_set_err(p_ctx_t *ctx, int err_type, string msg);
-void __p_set_err_at(p_ctx_t *ctx, int err_type, string msg, l_token_t *tok);
+void __p_set_err_next_pos(p_ctx_t *ctx, int err_type, string msg);
 void __p_eof_err(p_ctx_t *ctx);
 bool __p_expect(char type, string word, p_ctx_t *ctx);
 bool __p_expect_kw(string kwd, p_ctx_t *ctx);
@@ -70,6 +69,16 @@ bool __p_expect_sep(string sep, p_ctx_t *ctx);
 l_token_t *__p_peek(p_ctx_t *ctx);
 l_token_t *__p_next(p_ctx_t *ctx);
 bool __p_can_be_var(string var, p_ctx_t *ctx);
+
+void __p_err_on_next_token(p_ctx_t *ctx, string msg)
+//@requires __p_is_ctx(ctx);
+//@requires !s_has_err(ctx->glob_ctx);
+//@ensures s_has_err(ctx->glob_ctx);
+{
+    u_pos_t *pos = NULL;
+    if (!__p_is_eof(ctx)) pos = __p_next(ctx)->pos;
+    s_set_err_at(ctx->glob_ctx, 1, msg, pos);
+}
 
 void __p_eof_err(p_ctx_t *ctx)
 //@requires __p_is_ctx(ctx);
@@ -104,7 +113,7 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
             u_tok_type_to_readable(type), word,
             u_tok_type_to_readable(tok->type), tok->str
         );
-        __p_set_err_at(ctx, 1, err_msg, tok);
+        s_set_err_at(ctx->glob_ctx, 1, err_msg, tok->pos);
 
         return false;
     }
@@ -134,16 +143,16 @@ l_token_t *__p_expect_id_tok(p_ctx_t *ctx, bool is_var)
 //@requires __p_is_ctx(ctx);
 {
     if (__p_is_eof(ctx) || __p_peek(ctx)->type != 'I') {
-        __p_set_err(ctx, 1, "expecting identifier");
+        __p_err_on_next_token(ctx, "expecting identifier");
         return NULL;
     }
     l_token_t *tok = __p_next(ctx);
     if (is_var && !__p_can_be_var(tok->str, ctx)) {
-        __p_set_err_at(
-            ctx,
+        s_set_err_at(
+            ctx->glob_ctx,
             1, 
             format("expecting variable/function name, not \"%s\"", tok->str),
-            tok
+            tok->pos
         );
         return NULL;
     }
@@ -302,7 +311,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx);
 
 ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
     if (!__p_fset_exp(ctx)) {
-        __p_set_err(ctx, 1, "expecting expression");
+        __p_err_on_next_token(ctx, "expecting expression");
         return NULL;
     }
 
@@ -311,7 +320,7 @@ ast_exp_t *__p_expect_exp(p_ctx_t *ctx) {
 
 ast_type_t *__p_expect_type(p_ctx_t *ctx) {
     if (!__p_fset_type(ctx)) {
-        __p_set_err(ctx, 1, "expecting type");
+        __p_err_on_next_token(ctx, "expecting type");
         return NULL;    
     }
 
@@ -320,7 +329,7 @@ ast_type_t *__p_expect_type(p_ctx_t *ctx) {
 
 ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
     if (!__p_fset_stmt(ctx)) {
-        __p_set_err(ctx, 1, "expecting statement");
+        __p_err_on_next_token(ctx, "expecting statement");
         return NULL;
     }
 
@@ -329,7 +338,7 @@ ast_stmt_t *__p_expect_stmt(p_ctx_t *ctx) {
 
 ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
     if (!__p_fset_exp(ctx)) {
-        __p_set_err(ctx, 1, "expecting expression");
+        __p_err_on_next_token(ctx, "expecting expression");
         return NULL;
     }
 
@@ -338,7 +347,7 @@ ast_exp_t *__p_expect_exp_by_level(p_ctx_t *ctx, int level) {
 
 ast_stmt_t *__p_expect_simp(p_ctx_t *ctx) {
     if (!__p_fset_stmt(ctx)) {
-        __p_set_err(ctx, 1, "expecting (simple) statement");
+        __p_err_on_next_token(ctx, "expecting (simple) statement");
         return NULL;
     }
 
@@ -376,10 +385,10 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
             if (iden == NULL) return NULL;
 
             if (!s_has_decl_struct(ctx->glob_ctx, iden->str)) {
-                __p_set_err_at(
-                    ctx, 1,
+                s_set_err_at(
+                    ctx->glob_ctx, 1,
                     format("struct \"%s\" is not defined", iden->str),
-                    iden
+                    iden->pos
                 );
                 return NULL;
             }
@@ -1117,7 +1126,7 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 
     // insert into ctx before continuing to allow recursive struct pointers
     strct->name = tok->str;
-    om_insert_si(ctx->types, string_join("$", strct->name), 0);
+    if (!s_add_decl_struct(ctx->glob_ctx, strct->name, strct)) return NULL;
 
     if (__p_is_eof(ctx)) {
         __p_eof_err(ctx);
@@ -1195,29 +1204,23 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
         v_append(prog->globs, (void *) glob);
     }
 
-    prog->libs = ctx->libs;
     return prog;
 }
 
 // BEGIN parsing stage
 
-om_map_t *p_empty_type_ctx() {
-    return om_create_map(&string_ptr_compare);
-}
-
 /*
     Parsing each file updates the declared types that the parse has accumulated
-    so far. `type_ctx` is mutated each time.
+    so far.
  */
-e_error_t *p_parse_file(fr_file_t *file, om_map_t *type_ctx)
+e_error_t *p_parse_file(fr_file_t *file, s_glob_ctx_t *glob_ctx)
 //@requires file != NULL;
 //@requires v_is_vector(file->tokens);
 {
-    p_ctx_t *ctx = p_create_ctx(file->tokens, type_ctx);
-    ctx->types = type_ctx;
+    p_ctx_t *ctx = p_create_ctx(file->tokens, glob_ctx);
     file->ast = __p_parse_program(ctx);
 
-    return ctx->err;
+    return ctx->glob_ctx->err;
 }
 
 // END parsing stage
