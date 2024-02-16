@@ -1,9 +1,0 @@
-struct foo {
-    int abc;
-};
-
-int main() {
-    struct foo *f = alloc(struct foo);
-    f->abc = 69;
-    return 0;
-}

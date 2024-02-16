@@ -1,6 +1,0 @@
-int main() {
-    string a = "\\\\b";
-    string b = "\n\r\t abc \\";
-
-    return 0;
-}
