@@ -746,7 +746,11 @@ bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp, l_token_t *tok)
     }
 
     if (!is_lv) {
-        __p_set_err_at(ctx, 1, "LHS of assignment must be a left value", tok);
+        s_set_err_at(
+            ctx->glob_ctx, 1,
+            "LHS of assignment must be a left value",
+            tok->pos
+        );
     }
 
     return is_lv;
@@ -812,10 +816,10 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
 
         l_token_t *id_tok = __p_next(ctx);
         if (id_tok->type != 'I' || !__p_can_be_var(id_tok->str, ctx)) {
-            __p_set_err_at(
-                ctx, 1,
+            s_set_err_at(
+                ctx->glob_ctx, 1,
                 "expecting identifier in declaration",
-                id_tok
+                id_tok->pos
             );
             return NULL;
         }
@@ -1197,7 +1201,11 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             if (func == NULL) return NULL;
             glob->func = func;
         } else {
-            __p_set_err(ctx, 1, "expecting typedef, struct or function def");
+            s_set_err_at(
+                ctx->glob_ctx, 1,
+                "expecting typedef, struct or function def",
+                peek->pos
+            );
             return NULL;
         }
 
