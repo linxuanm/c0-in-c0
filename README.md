@@ -10,7 +10,12 @@ To build the compiler executable, run `make` (make sure you have a working insta
 ```sh
 ./ccc0 --help
 ```
-for further instructions. For example, to
+for further instructions. For example, to compile `example.c0`, run:
+```sh
+./ccc0 example.c0
+```
+
+The target code will be produced through stdout (since C0 does not support writing to files QwQ).
 
 ## Development
 
@@ -19,10 +24,19 @@ A `README.txt` containing the instructions for building the executable is needed
 make init
 ```
 
+This will ensure that editor language features work as expected.
+
+To run unit tests, run:
+```sh
+make test
+```
+
 ## Dependencies
 
 This project used to also contain a regular expression engine and an ordered map + priority queue (implemented with red-black tree) but I decided to move them into another [repo](https://github.com/davidmaamoaix/c0-utils) and just mirror `libs/` to that.
 
 ## Testing
 
-All test files are located under `tests/`. Run `make test` to test.
+All test files are located under `test_cases/`: failing programs are located under the `fail/` subdirectory while correct programs are located under the `succeed/` directory.
+
+All failing programs under `test_cases/fail/` should have the file name format `<exit_code>_<test_name>.c0`. The unit test file extracts the expected exit code from file names to test them against the compiler's exit code. See the comments in [src/error.c1](src/error.c1) for the corresponding exit codes for compile-time errors.
