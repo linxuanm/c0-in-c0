@@ -1,3 +1,21 @@
+// local variable information
+struct s_var_t {
+    string name;
+    ast_type_t *type;
+
+    bool used;
+    bool uninit; // whether the variable *can* be uninitialized
+};
+typedef struct s_var_t s_var_t;
+
+// local semantic information
+struct s_loc_ctx_t {
+
+    // stack of scopes; each scope is a map from variable name to variable info
+    vec_t *scopes; // [om_map_t *]
+};
+typedef struct s_loc_ctx_t s_loc_ctx_t;
+
 // global semantic information
 struct s_glob_ctx_t {
 
@@ -12,41 +30,29 @@ struct s_glob_ctx_t {
 
     // error handling (propagate instead of throwing)
     e_error_t *err;
+
+    // local context (null if not in a function)
+    s_loc_ctx_t *lctx;
 };
 typedef struct s_glob_ctx_t s_glob_ctx_t;
 
-// local variable information
-struct s_var_t {
-    string name;
-    ast_type_t *type;
-
-    bool used;
-    bool uninit; // whether the variable *can* be uninitialized
-};
-typedef struct s_var_t s_var_t;
-
-// local scope information
-struct s_scope_t {
-
-    // local var info
-    om_map_t *vars; // string -> s_var_t *
-};
-typedef struct s_scope_t s_scope_t;
-
-// local semantic information
-struct s_loc_ctx_t {
-
-    vec_t *scopes;
-};
-typedef struct s_loc_ctx_t s_loc_ctx_t;
-
 // BEGIN contracts
+
+bool __s_is_local_ctx(s_loc_ctx_t *lctx) {
+    return lctx != NULL
+        && v_is_vector(lctx->scopes)
+        && !v_is_empty(lctx->scopes);
+}
 
 bool __s_is_glob_ctx(s_glob_ctx_t *gctx) {
     return gctx != NULL
         && __om_is_valid_tree(gctx->libs)
         && __om_is_valid_tree(gctx->strcts)
         && __om_is_valid_tree(gctx->aliases);
+}
+
+bool __s_has_loc_ctx(s_glob_ctx_t *gctx) {
+    return gctx->lctx != NULL && __s_is_local_ctx(gctx->lctx);
 }
 
 bool s_has_err(s_glob_ctx_t *gctx) {
@@ -77,6 +83,8 @@ void s_set_err_at(s_glob_ctx_t *ctx, int err_type, string msg, u_pos_t *pos)
 
 // END error
 
+// BEGIN constructors
+
 s_glob_ctx_t *s_create_glob_ctx()
 //@ensures __s_is_glob_ctx(\result);
 {
@@ -87,6 +95,20 @@ s_glob_ctx_t *s_create_glob_ctx()
 
     return gctx;
 }
+
+bool s_add_decl_var(s_glob_ctx_t *gctx, string name, ast_type_t *type)
+//@requires __s_is_glob_ctx(gctx);
+//@requires __s_has_loc_ctx(gctx);
+{
+    s_loc_ctx_t *lctx = gctx->lctx;
+    om_map_t *top_scope = (om_map_t *) v_get_last(lctx->scopes);
+
+    // TODO: finish this
+
+    return true;
+}
+
+// END constructors
 
 // BEGIN checks
 

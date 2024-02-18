@@ -1,0 +1,29 @@
+// Function 1
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function 2
+int subtract(int a, int b) {
+    return a - b;
+}
+
+// Function 3
+int multiply(int a, int b) {
+    return a * b;
+}
+
+// Function 4 (Contains erroneous code)
+int divide(int a, int b) {
+    // Undeclared variable reference
+    return c / b;
+}
+
+// Function 5
+int power(int base, int exponent) {
+    int result = 1;
+    for (int i = 0; i < exponent; i++) {
+        result *= base;
+    }
+    return result;
+}

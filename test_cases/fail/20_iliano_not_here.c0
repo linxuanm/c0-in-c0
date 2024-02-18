@@ -1,0 +1,13 @@
+struct gates_hillman {
+    string clive_newstead;
+    string david_offner;
+    string john_mackey;
+    string tom_cortina;
+};
+typedef struct gates_hillman gates_hillman;
+
+string find_iliano() {
+    gates_hillman *ptr = alloc(gates_hillman);
+
+    return ptr->iliano_i_cant_spell_his_last_name;
+}
