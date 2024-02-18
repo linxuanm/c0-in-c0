@@ -20,13 +20,16 @@ def generate_exit_code_test(file_name: str, exit_code: int):
             capture_output=True
         )
 
-        if result.returncode == 1:
+        stdout = result.stdout.decode('utf-8').strip()
+        ret_code = int(stdout.split("\n")[-1])
+
+        if ret_code == 1:
             self.fail(
                 f"Test case '{file_name}' broke compiler. "
                 f"Compiler output: {result.stderr.decode('utf-8')}"
             )
 
-        self.assertEqual(result.returncode, exit_code)
+        self.assertEqual(ret_code, exit_code)
 
     return test
 
