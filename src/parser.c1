@@ -77,7 +77,7 @@ void __p_err_on_next_token(p_ctx_t *ctx, string msg)
 {
     u_pos_t *pos = NULL;
     if (!__p_is_eof(ctx)) pos = __p_next(ctx)->pos;
-    s_set_err_at(ctx->glob_ctx, 1, msg, pos);
+    s_set_err_at(ctx->glob_ctx, 3, msg, pos);
 }
 
 void __p_eof_err(p_ctx_t *ctx)
@@ -85,7 +85,7 @@ void __p_eof_err(p_ctx_t *ctx)
 //@requires !s_has_err(ctx->glob_ctx);
 //@ensures s_has_err(ctx->glob_ctx);
 {
-    s_set_err(ctx->glob_ctx, 1, "unexpected end of file");
+    s_set_err(ctx->glob_ctx, 3, "unexpected end of file");
 }
 
 bool __p_match(l_token_t *tok, char type, string word) {
@@ -113,7 +113,7 @@ bool __p_expect(char type, string word, p_ctx_t *ctx)
             u_tok_type_to_readable(type), word,
             u_tok_type_to_readable(tok->type), tok->str
         );
-        s_set_err_at(ctx->glob_ctx, 1, err_msg, tok->pos);
+        s_set_err_at(ctx->glob_ctx, 3, err_msg, tok->pos);
 
         return false;
     }
@@ -386,7 +386,7 @@ ast_type_t *__p_parse_type(p_ctx_t *ctx)
 
             if (!s_has_decl_struct(ctx->glob_ctx, iden->str)) {
                 s_set_err_at(
-                    ctx->glob_ctx, 1,
+                    ctx->glob_ctx, 21,
                     format("struct \"%s\" is not defined", iden->str),
                     iden->pos
                 );
@@ -747,7 +747,7 @@ bool __p_assert_left_value(p_ctx_t *ctx, ast_exp_t *exp, l_token_t *tok)
 
     if (!is_lv) {
         s_set_err_at(
-            ctx->glob_ctx, 1,
+            ctx->glob_ctx, 3,
             "LHS of assignment must be a left value",
             tok->pos
         );
@@ -817,7 +817,7 @@ ast_stmt_t *__p_parse_simp(p_ctx_t *ctx)
         l_token_t *id_tok = __p_next(ctx);
         if (id_tok->type != 'I' || !__p_can_be_var(id_tok->str, ctx)) {
             s_set_err_at(
-                ctx->glob_ctx, 1,
+                ctx->glob_ctx, 3,
                 "expecting identifier in declaration",
                 id_tok->pos
             );
@@ -1202,7 +1202,7 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
             glob->func = func;
         } else {
             s_set_err_at(
-                ctx->glob_ctx, 1,
+                ctx->glob_ctx, 3,
                 "expecting typedef, struct or function def",
                 peek->pos
             );

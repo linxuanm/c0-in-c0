@@ -80,8 +80,6 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
 
         return __c_exit();
     }
-    
-    println("Success");
 
     c_result_t *result = alloc(c_result_t);
     result->target_code = "";

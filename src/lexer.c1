@@ -100,7 +100,7 @@ e_error_t *l_tokenize(s_glob_ctx_t *gctx, fr_file_t *repr) {
         // lexer failed
         if (token_size == 0) {
             u_pos_t *invalid_pos = fr_create_pos(row, col, row, col);
-            return e_create_error(0, "invalid token", invalid_pos);
+            return e_create_error(2, "invalid token", invalid_pos);
         }
 
         string matched = string_sub(code, src_ptr, src_ptr + token_size);

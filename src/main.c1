@@ -2,7 +2,7 @@
 #use <conio>
 #use <string>
 
-void compile_files(string[] files, int n_files, cparams_t *params) {
+int compile_files(string[] files, int n_files, cparams_t *params, bool test) {
     vec_t *file_reprs = v_create_vector(); // [fr_file_t *]
     for (int i = 0; i < n_files; i++) {
         string path = files[i];
@@ -16,14 +16,20 @@ void compile_files(string[] files, int n_files, cparams_t *params) {
     
     c_result_t *res = compile(file_reprs, params);
 
-    if (res->no_output) return;
+    if (res->no_output) return 0;
 
     if (e_has_err(res->err)) {
-        string msg = e_format(res->err, res->failed_file);
-        print(msg);
 
-        return;
+        // `test` should silence all output except for return code & warnings
+        if (!test) {
+            string msg = e_format(res->err, res->failed_file);
+            print(msg);
+        }
+
+        return res->err->err_type;
     }
+
+    return 0;
 }
 
 void print_padded(string s, int pad) {
@@ -77,9 +83,10 @@ int main() {
     *lib_path = "/afs/andrew/course/15/122/lib";
     args_string("--lib-path", lib_path);
 
-    bool *testing = alloc(bool);
-    args_flag("--test", testing);
+    bool *test = alloc(bool);
+    args_flag("--test", test);
 
+    int ret_code = 0;
     args_t args = args_parse();
     if (args->argc == 0) {
         print_help();
@@ -102,8 +109,8 @@ int main() {
         params->dump_ast = *dump_ast;
         params->lib_path = *lib_path;
 
-        compile_files(args->argv, args->argc, params);
+        ret_code = compile_files(args->argv, args->argc, params, *test);
     }
 
-    return 0;
+    return ret_code;
 }
