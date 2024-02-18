@@ -8,16 +8,16 @@ struct e_error_t {
         Error type enum (mainly for testing/integration purpose):
 
         General front-end error:
-        - 0: lexer error
-        - 1: parse error (syntax error)
+        - 2: lexer error
+        - 3: parse error (syntax error)
 
         Semantic error:
-        - 10: duplicate declaration (variable)
+        - 10: duplicate declaration (variable/field)
         - 11: duplicate declaration (struct)
         - 12: duplicate declaration (typedef)
         - 13: duplicate declaration (function)
 
-        - 20: undefined variable
+        - 20: undefined variable/field
         - 21: undefined struct
         - 22: undefined typedef
         - 23: undefined function
