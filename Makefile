@@ -3,6 +3,10 @@
 CC = cc0
 CFLAGS = -d -w
 
+# workspace settings
+
+PY = python3
+
 # repo settings
 INIT = README.txt
 SRC_PATH = src
@@ -30,7 +34,7 @@ OBJ = ccc0
 
 # targets
 
-.PHONY: clean init
+.PHONY: clean init test
 
 all: $(OBJ)
 
@@ -42,3 +46,6 @@ clean:
 
 init: clean
 	echo "% $(CC) $(CFLAGS) -o $(OBJ) $(LIBS) $(SRC)" > README.txt
+
+test: init
+	$(PY) tests/unit_test.py

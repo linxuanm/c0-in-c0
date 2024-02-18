@@ -1142,6 +1142,7 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
         strct->defined = false;
     } else {
         strct->defined = true;
+        strct->name_to_index = om_create_map(&string_ptr_compare);
         strct->mem_types = v_create_vector();
         strct->mem_names = v_create_vector();
 
@@ -1156,6 +1157,17 @@ ast_struct_t *__p_parse_struct(p_ctx_t *ctx)
 
             if (!__p_expect_sep(";", ctx)) return NULL;
 
+            if (om_has_s(strct->name_to_index, mname->str)) {
+                s_set_err_at(
+                    ctx->glob_ctx, 10,
+                    format("duplicate member name \"%s\"", mname->str),
+                    mname->pos
+                );
+                return NULL;
+            }
+
+            int field_index = v_length(strct->mem_types);
+            om_insert_si(strct->name_to_index, mname->str, field_index);
             v_append(strct->mem_types, (void *) mtype);
             v_append_string(strct->mem_names, mname->str);
         }

@@ -163,6 +163,7 @@ struct ast_struct_t {
     bool defined;
 
     string name;
+    om_map_t *name_to_index; // string -> int
     vec_t *mem_types;
     vec_t *mem_names;
 
