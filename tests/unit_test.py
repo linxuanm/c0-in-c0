@@ -20,14 +20,17 @@ def generate_exit_code_test(file_name: str, exit_code: int):
             capture_output=True
         )
 
-        stdout = result.stdout.decode('utf-8').strip()
-        ret_code = int(stdout.split("\n")[-1])
-
-        if ret_code == 1:
+        # check for unexpected compiler failure
+        if result.returncode == 1:
             self.fail(
                 f"Test case '{file_name}' broke compiler. "
                 f"Compiler output: {result.stderr.decode('utf-8')}"
             )
+
+        # hack to get the exit code from the compiler (cc0 does not support
+        # custom exit code)
+        stdout = result.stdout.decode('utf-8').strip()
+        ret_code = int(stdout.split("\n")[-1])
 
         self.assertEqual(ret_code, exit_code)
 
