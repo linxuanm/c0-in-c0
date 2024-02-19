@@ -85,6 +85,19 @@ void s_set_err_at(s_glob_ctx_t *ctx, int err_type, string msg, u_pos_t *pos)
 
 // BEGIN constructors
 
+s_loc_ctx_t *s_create_loc_ctx()
+//@ensures __s_is_local_ctx(\result);
+{
+    s_loc_ctx_t *lctx = alloc(s_loc_ctx_t);
+    lctx->scopes = v_create_vector();
+
+    // initial scope for parameters
+    om_map_t *param_scope = om_create_map(&string_ptr_compare);
+    v_append(lctx->scopes, (void *) param_scope);
+
+    return lctx;
+}
+
 s_glob_ctx_t *s_create_glob_ctx()
 //@ensures __s_is_glob_ctx(\result);
 {
@@ -103,7 +116,16 @@ bool s_add_decl_var(s_glob_ctx_t *gctx, string name, ast_type_t *type)
     s_loc_ctx_t *lctx = gctx->lctx;
     om_map_t *top_scope = (om_map_t *) v_get_last(lctx->scopes);
 
-    // TODO: finish this
+    if (om_has_s(top_scope, name)) {
+        s_set_err_at(
+            gctx, 10,
+            format("duplicate variable declaration \"%s\"", name),
+            type->pos
+        );
+        return false;
+    }
+
+    om_insert_s(top_scope, name, (void *) type);
 
     return true;
 }
@@ -123,6 +145,10 @@ bool s_has_decl_struct(s_glob_ctx_t *gctx, string name)
 {
     return om_has_s(gctx->strcts, name);
 }
+
+// END checks
+
+// BEGIN context-mutating actions
 
 bool s_add_decl_alias(s_glob_ctx_t *gctx, string name, ast_alias_t *alias)
 //@requires __s_is_glob_ctx(gctx);
@@ -161,4 +187,39 @@ bool s_add_decl_struct(s_glob_ctx_t *gctx, string name, ast_struct_t *strct)
     return true;
 }
 
-// END checks
+void s_push_scope(s_glob_ctx_t *gctx)
+//@requires __s_is_glob_ctx(gctx);
+//@requires __s_has_loc_ctx(gctx);
+{
+    s_loc_ctx_t *lctx = gctx->lctx;
+    om_map_t *new_scope = om_create_map(&string_ptr_compare);
+    v_append(lctx->scopes, (void *) new_scope);
+}
+
+void s_pop_scope(s_glob_ctx_t *gctx)
+//@requires __s_is_glob_ctx(gctx);
+//@requires __s_has_loc_ctx(gctx);
+//@requires !v_is_empty(gctx->lctx->scopes);
+{
+    s_loc_ctx_t *lctx = gctx->lctx;
+    v_remove_last(lctx->scopes);
+}
+
+void s_enter_function(s_glob_ctx_t *gctx)
+//@requires __s_is_glob_ctx(gctx);
+//@requires !__s_has_loc_ctx(gctx);
+{
+    gctx->lctx = s_create_loc_ctx();
+}
+
+void s_exit_function(s_glob_ctx_t *gctx)
+//@requires __s_is_glob_ctx(gctx);
+//@requires __s_has_loc_ctx(gctx);
+{
+    s_pop_scope(gctx);
+    assert(v_is_empty(gctx->lctx->scopes));
+
+    gctx->lctx = NULL;
+}
+
+// END context-mutating actions
