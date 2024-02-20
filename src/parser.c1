@@ -1033,6 +1033,8 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
     func->name = iden_tok->str;
     func->pos = iden_tok->pos;
 
+    s_enter_function(ctx->glob_ctx);
+
     if (!__p_expect_sep("(", ctx)) return NULL;
 
     if (__p_fset_type(ctx)) {
@@ -1074,6 +1076,8 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
         func->stmts = __p_expect_block(ctx);
         if (func->stmts == NULL) return NULL;
     }
+
+    s_exit_function(ctx->glob_ctx);
 
     return func;
 }

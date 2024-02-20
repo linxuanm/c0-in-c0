@@ -1,42 +1,30 @@
-ast_type_t *t_deref_alias(om_map_t *alias_map, ast_type_t *type)
-//@requires __om_is_valid_tree(alias_map);
+ast_type_t *t_deref_alias(s_glob_ctx_t *gctx, ast_type_t *type)
+//@requires __s_is_glob_ctx(gctx);
 //@requires type != NULL;
 {
-    while (type != NULL && type->type == 'D') {
-        type = (ast_type_t *) om_get_s(alias_map, type->iden);
+    ast_type_t *prev = type;
+    while (type != NULL && type->type == 'D')
+    //@loop_invariant prev != NULL;
+    {
+        prev = type;
+        type = (ast_type_t *) om_get_s(gctx->aliases, type->iden);
+    }
+
+    if (type == NULL) {
+        s_set_err_at(
+            gctx, 22,
+            format("type alias \"%s\" is not defined", prev->iden),
+            prev->pos
+        );
     }
 
     return type;
 }
 
-bool t_match_type(om_map_t *alias_map, ast_type_t *a, ast_type_t *b)
-//@requires __om_is_valid_tree(alias_map);
-//@requires a != NULL && b != NULL;
-{
-    a = t_deref_alias(alias_map, a);
-    b = t_deref_alias(alias_map, b);
-    
-    //@assert a->type != 'D';
-    //@assert b->type != 'D';
-
-    if (a->type != b->type) return false;
-
-    if (a->type == 'X') {
-        return string_equal(a->iden, b->iden);
-    } else if (a->type == 'A' || a->type == 'P') {
-        return t_match_type(alias_map, a->content, b->content);
-    } else {
-        return true;
-    }
-}
-
 // does not check for whether a struct is defined (i.e. not forward declared);
 // that is checked on use sites of `alloc` while calculating allocation size
-bool t_is_valid_type(
-    om_map_t *alias_map, om_map_t *struct_map, ast_type_t *type
-)
-//@requires __om_is_valid_tree(alias_map);
-//@requires __om_is_valid_tree(struct_map);
+bool t_assert_valid_type(s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void)
+//@requires __s_is_glob_ctx(gctx);
 //@requires type != NULL;
 {
     if (
@@ -44,30 +32,86 @@ bool t_is_valid_type(
         type->type == 'S' || type->type == 'C'
     ) return true;
 
-    if (type->type == 'V') return false;
-    if (type->type == 'D') {
-        ast_type_t *actual = t_deref_alias(alias_map, type);
-        if (actual == NULL) return false;
+    if (type->type == 'V') {
+        if (allow_void) return true;
 
-        return t_is_valid_type(alias_map, struct_map, actual);
+        s_set_err_at(
+            gctx, 31,
+            "\"void\" can only be used as return type for functions",
+            type->pos
+        );
+
+        return false;
     }
 
-    if (type->type == 'X') return om_has_s(struct_map, type->iden);
+    if (type->type == 'D') {
+        ast_type_t *actual = t_deref_alias(gctx, type);
+        if (actual == NULL) return false;
+
+        return t_assert_valid_type(gctx, actual, allow_void);
+    }
+
+    if (type->type == 'X') {
+        if (!om_has_s(gctx->strcts, type->iden)) {
+            s_set_err_at(
+                gctx, 21,
+                format("struct \"%s\" is not defined", type->iden),
+                type->pos
+            );
+            return false;
+        }
+
+        return true;
+    }
+
     if (type->type == 'A' || type->type == 'P') {
-        return t_is_valid_type(alias_map, struct_map, type->content);
+        return t_assert_valid_type(gctx, type->content, false);
     }
 
     error("not implemented type");
 }
 
-bool t_is_small_type(om_map_t *alias_map, ast_type_t *type)
+// requires `type` to be a valid type
+bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
+//@requires __s_is_glob_ctx(gctx);
 //@requires type != NULL;
 {
-    ast_type_t *actual = t_deref_alias(alias_map, type);
-
+    ast_type_t *actual = t_deref_alias(gctx, type);
     assert(actual != NULL);
 
     return actual->type == 'I' || actual->type == 'B'
         || actual->type == 'C' || actual->type == 'S'
         || actual->type == 'A' || actual->type == 'P';
+}
+
+// requires `expect` and `real` to be valid types
+bool t_assert_match_type(
+    s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real
+)
+//@requires __s_is_glob_ctx(gctx);
+//@requires expect != NULL && real != NULL;
+{
+    expect = t_deref_alias(gctx, expect);
+    real = t_deref_alias(gctx, real);
+    
+    //@assert expect != NULL && real != NULL;
+    //@assert expect->type != 'D';
+    //@assert real->type != 'D';
+
+    if (expect->type != real->type) {
+        s_set_err_at(
+            gctx, 31,
+            "type mismatch", // TODO: more info here
+            real->pos
+        );
+        return false;
+    }
+
+    if (a->type == 'X') {
+        return string_equal(a->iden, b->iden);
+    } else if (a->type == 'A' || a->type == 'P') {
+        return t_match_type(gctx, a->content, b->content);
+    } else {
+        return true;
+    }
 }
