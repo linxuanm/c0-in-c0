@@ -25,6 +25,7 @@ struct e_error_t {
         - 30: function call parameter mismatch (no. params mismatch)
         - 31: type mismatch
         - 32: requires small type
+        - 33: invalid usage of `void`
         
         - 40: potential use of uninitialized variable
         - 41: missing return value

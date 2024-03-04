@@ -10,74 +10,70 @@ ast_type_t *t_deref_alias(s_glob_ctx_t *gctx, ast_type_t *type)
         type = (ast_type_t *) om_get_s(gctx->aliases, type->iden);
     }
 
-    if (type == NULL) {
-        s_set_err_at(
-            gctx, 22,
-            format("type alias \"%s\" is not defined", prev->iden),
-            prev->pos
-        );
-    }
-
     return type;
 }
 
+// BEGIN soft checks
+
 // does not check for whether a struct is defined (i.e. not forward declared);
 // that is checked on use sites of `alloc` while calculating allocation size
-bool t_assert_valid_type(s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void)
+e_error_t *t_is_valid_type(
+    s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void
+)
 //@requires __s_is_glob_ctx(gctx);
 //@requires type != NULL;
 {
     if (
         type->type == 'I' || type->type == 'B' ||
         type->type == 'S' || type->type == 'C'
-    ) return true;
+    ) return NULL;
 
     if (type->type == 'V') {
-        if (allow_void) return true;
-
-        s_set_err_at(
-            gctx, 31,
-            "\"void\" can only be used as return type for functions",
+        return allow_void ? NULL : e_create_error(
+            33, "void type only allowed in function return type",
             type->pos
         );
-
-        return false;
     }
 
     if (type->type == 'D') {
         ast_type_t *actual = t_deref_alias(gctx, type);
-        if (actual == NULL) return false;
+        if (actual == NULL) {
+            return e_create_error(
+                22,
+                format("undefined typedef \"%s\"", type->iden),
+                type->pos
+            );
+        }
 
-        return t_assert_valid_type(gctx, actual, allow_void);
+        return t_is_valid_type(gctx, actual, allow_void);
     }
 
     if (type->type == 'X') {
-        if (!om_has_s(gctx->strcts, type->iden)) {
-            s_set_err_at(
-                gctx, 21,
-                format("struct \"%s\" is not defined", type->iden),
+        if (om_has_s(gctx->strcts, type->iden)) {
+            return e_create_error(
+                21,
+                format("undefined struct \"%s\"", type->iden),
                 type->pos
             );
-            return false;
         }
 
-        return true;
+        return NULL;
     }
 
     if (type->type == 'A' || type->type == 'P') {
-        return t_assert_valid_type(gctx, type->content, false);
+        return t_is_valid_type(gctx, type->content, false);
     }
 
     error("not implemented type");
 }
 
 // requires `type` to be a valid type
-bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
+bool t_is_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
 //@requires __s_is_glob_ctx(gctx);
-//@requires type != NULL;
+//@requires t_is_valid_type(gctx, type, true) == NULL;
 {
     ast_type_t *actual = t_deref_alias(gctx, type);
-    assert(actual != NULL);
+    //@assert actual != NULL;
 
     return actual->type == 'I' || actual->type == 'B'
         || actual->type == 'C' || actual->type == 'S'
@@ -85,33 +81,66 @@ bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
 }
 
 // requires `expect` and `real` to be valid types
-bool t_assert_match_type(
-    s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real
-)
+bool t_match_type(s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real)
 //@requires __s_is_glob_ctx(gctx);
-//@requires expect != NULL && real != NULL;
+//@requires t_is_valid_type(gctx, expect, true) == NULL;
+//@requires t_is_valid_type(gctx, real, true) == NULL;
 {
     expect = t_deref_alias(gctx, expect);
     real = t_deref_alias(gctx, real);
     
-    //@assert expect != NULL && real != NULL;
     //@assert expect->type != 'D';
     //@assert real->type != 'D';
 
-    if (expect->type != real->type) {
-        s_set_err_at(
-            gctx, 31,
-            "type mismatch", // TODO: more info here
-            real->pos
-        );
-        return false;
-    }
+    if (expect->type != real->type) return false;
 
-    if (a->type == 'X') {
-        return string_equal(a->iden, b->iden);
-    } else if (a->type == 'A' || a->type == 'P') {
-        return t_match_type(gctx, a->content, b->content);
+    if (expect->type == 'X') {
+        return string_equal(expect->iden, real->iden);
+    } else if (expect->type == 'A' || expect->type == 'P') {
+        return t_match_type(gctx, expect->content, real->content);
     } else {
         return true;
     }
 }
+
+// END soft checks
+
+// BEGIN type assertions
+
+bool t_assert_valid_type(s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void)
+//@requires __s_is_glob_ctx(gctx);
+//@requires type != NULL;
+{
+    gctx->err = t_is_valid_type(gctx, type, allow_void);
+    return !s_has_err(gctx);
+}
+
+bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
+//@requires __s_is_glob_ctx(gctx);
+//@requires t_is_valid_type(gctx, type, true) == NULL;
+{
+    if (!t_is_small_type(gctx, type)) {
+        s_set_err_at(gctx, 32, "expected small type", type->pos);
+        return false;
+    }
+
+    return true;
+}
+
+bool t_assert_match_type(
+    s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real
+)
+//@requires __s_is_glob_ctx(gctx);
+//@requires t_is_valid_type(gctx, expect, true) == NULL;
+//@requires t_is_valid_type(gctx, real, true) == NULL;
+{
+    if (!t_match_type(gctx, expect, real)) {
+        // TODO: get a AST_TO_STRING function for better error message
+        s_set_err_at(gctx, 31, "type msimatch", real->pos);
+        return false;
+    }
+
+    return true;
+}
+
+// END type assertions

@@ -1058,6 +1058,8 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
 
             v_append(func->param_types, (void *) ptype);
             v_append_string(func->param_names, iden->str);
+
+            // if (!t_is_)
         }
     }
 
