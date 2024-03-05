@@ -1047,6 +1047,9 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
         v_append(func->param_types, (void *) ptype);
         v_append_string(func->param_names, iden->str);
 
+        if (!t_assert_valid_type(ctx->glob_ctx, ptype, false)) return NULL;
+        if (!t_assert_small_type(ctx->glob_ctx, ptype)) return NULL;
+
         while (__p_fset_comma(ctx)) {
             __p_next(ctx);
 
@@ -1059,7 +1062,8 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
             v_append(func->param_types, (void *) ptype);
             v_append_string(func->param_names, iden->str);
 
-            // if (!t_is_)
+            if (!t_assert_valid_type(ctx->glob_ctx, ptype, false)) return NULL;
+            if (!t_assert_small_type(ctx->glob_ctx, ptype)) return NULL;
         }
     }
 

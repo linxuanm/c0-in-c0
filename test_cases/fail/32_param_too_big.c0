@@ -1,0 +1,11 @@
+int main() {
+    return 0;
+}
+
+struct banana;
+
+struct banana { string yay; };
+
+string foo(struct banana test) {
+    return test.yay;
+}
