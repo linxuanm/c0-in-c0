@@ -1,4 +1,4 @@
-name: c0-in-c0 CI
+name: C0-in-C0 Tests
 
 on:
   push:
@@ -11,10 +11,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
-    - name: Install dependencies
+    - name: Install cc0
+      run: |
+        wget https://c0.cs.cmu.edu/downloads/cc0-debian.deb
+        sudo apt install ./cc0-debian.deb
+
+    - name: Compile
       run: make
 
-    - name: Run test
+    - name: Run Tests
       run: make test
