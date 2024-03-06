@@ -61,6 +61,9 @@ e_error_t *t_is_valid_type(
     }
 
     if (type->type == 'A' || type->type == 'P') {
+        // type of a `NULL` literal
+        if (type->type == 'P' && type->content == NULL) return NULL;
+
         return t_is_valid_type(gctx, type->content, false);
     }
 
@@ -96,7 +99,12 @@ bool t_match_type(s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real)
 
     if (expect->type == 'X') {
         return string_equal(expect->iden, real->iden);
-    } else if (expect->type == 'A' || expect->type == 'P') {
+    } else if (expect->type == 'A') {
+        return t_match_type(gctx, expect->content, real->content);
+    } else if (expect->type == 'P') {
+        // a `NULL` literal matches any pointer type
+        if (real->content == NULL) return true;
+
         return t_match_type(gctx, expect->content, real->content);
     } else {
         return true;
@@ -107,6 +115,7 @@ bool t_match_type(s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real)
 
 // BEGIN type assertions
 
+// only used for AST type
 bool t_assert_valid_type(s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void)
 //@requires __s_is_glob_ctx(gctx);
 //@requires type != NULL;
@@ -115,6 +124,7 @@ bool t_assert_valid_type(s_glob_ctx_t *gctx, ast_type_t *type, bool allow_void)
     return !s_has_err(gctx);
 }
 
+// only used for AST type
 bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
 //@requires __s_is_glob_ctx(gctx);
 //@requires t_is_valid_type(gctx, type, true) == NULL;
@@ -128,7 +138,7 @@ bool t_assert_small_type(s_glob_ctx_t *gctx, ast_type_t *type)
 }
 
 bool t_assert_match_type(
-    s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real
+    s_glob_ctx_t *gctx, ast_type_t *expect, ast_type_t *real, u_pos_t *pos
 )
 //@requires __s_is_glob_ctx(gctx);
 //@requires t_is_valid_type(gctx, expect, true) == NULL;
@@ -136,7 +146,7 @@ bool t_assert_match_type(
 {
     if (!t_match_type(gctx, expect, real)) {
         // TODO: get a AST_TO_STRING function for better error message
-        s_set_err_at(gctx, 31, "type msimatch", real->pos);
+        s_set_err_at(gctx, 31, "type msimatch", pos);
         return false;
     }
 
@@ -144,3 +154,25 @@ bool t_assert_match_type(
 }
 
 // END type assertions
+
+// BEGIN exp type check
+
+// populates the `type` 
+bool t_check_term(s_glob_ctx_t *gctx, ast_exp_t *term)
+//@requires __s_is_glob_ctx(gctx);
+//@ensures xor(\result, e_has_err(gctx->err));
+{
+    ast_type_t *type = alloc(ast_type_t);
+    if (term->type == 'I') type->type = 'I';
+    else if (term->type == 'C') type->type = 'C';
+    else if (term->type == 'S') type->type = 'S';
+    else if (term->type == 'B') type->type = 'S';
+    else if (term->type == 'N') type->type = 'S';
+    else if (term->type == 'D') type->type = 'S';
+    else { error("unimplemented type"); }
+
+    term->etype = type;
+    return true;
+}
+
+// END exp type check

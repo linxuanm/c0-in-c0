@@ -1025,8 +1025,11 @@ ast_func_t *__p_parse_func(p_ctx_t *ctx)
     func->param_types = v_create_vector();
     func->param_names = v_create_vector();
 
-    func->ret_type = __p_expect_type(ctx);
-    if (func->ret_type == NULL) return NULL;
+    ast_type_t *rtype = __p_expect_type(ctx);
+    if (rtype == NULL) return NULL;
+    func->ret_type = rtype;
+    if (!t_assert_valid_type(ctx->glob_ctx, rtype, false)) return NULL;
+    if (!t_assert_small_type(ctx->glob_ctx, rtype)) return NULL;
 
     l_token_t *iden_tok = __p_expect_id_tok(ctx, true);
     if (iden_tok == NULL) return NULL;
@@ -1243,14 +1246,14 @@ ast_program_t *__p_parse_program(p_ctx_t *ctx)
     Parsing each file updates the declared types that the parse has accumulated
     so far.
  */
-e_error_t *p_parse_file(fr_file_t *file, s_glob_ctx_t *glob_ctx)
-//@requires file != NULL;
-//@requires v_is_vector(file->tokens);
-{
-    p_ctx_t *ctx = p_create_ctx(file->tokens, glob_ctx);
-    file->ast = __p_parse_program(ctx);
+// e_error_t *p_parse_file(fr_file_t *file, s_glob_ctx_t *glob_ctx)
+// //@requires file != NULL;
+// //@requires v_is_vector(file->tokens);
+// {
+//     p_ctx_t *ctx = p_create_ctx(file->tokens, glob_ctx);
+//     file->ast = __p_parse_program(ctx);
 
-    return ctx->glob_ctx->err;
-}
+//     return ctx->glob_ctx->err;
+// }
 
 // END parsing stage

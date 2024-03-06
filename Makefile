@@ -26,6 +26,7 @@ SRC_MAIN = \
 # build settings
 
 LIBS = \
+	$(C0_UTIL_PATH)/shorthand.c1 \
 	$(C0_UTIL_PATH)/vector.c1 \
 	$(C0_UTIL_PATH)/ordered_map.c1 \
 	$(C0_UTIL_PATH)/regex.c1
@@ -47,5 +48,5 @@ clean:
 init: clean
 	echo "% $(CC) $(CFLAGS) -o $(OBJ) $(LIBS) $(SRC)" > README.txt
 
-test: init
+test: $(OBJ)
 	$(PY) tests/unit_test.py

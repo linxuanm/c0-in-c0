@@ -16,6 +16,7 @@ struct ast_type_t {
     string iden;
 
     // 'A', 'P'
+    // `content == NULL`: then this is a null pointer (can be any pointer type)
     struct ast_type_t *content;
 
     // positional information
@@ -78,6 +79,9 @@ struct ast_exp_t {
 
     // positional information
     u_pos_t *pos;
+
+    // the type of this expression (populated on typecheck)
+    ast_type_t *etype;
 
     // number of C0VM instructions needed to load this expression
     int n_c0vm_code;

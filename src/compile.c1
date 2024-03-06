@@ -64,10 +64,9 @@ c_result_t *compile(vec_t *file_reprs, cparams_t *params) {
     if (params->dump_ast) {
         println("// INCLUDED LIBS");
 
-        void *[] libs = alloc_array(void *, om_size(gctx->libs));
-        __om_collect_keys(gctx->libs->root, libs, 0);
+        vec_t *libs = om_get_keys(gctx->libs);
         for (int l = 0; l < om_size(gctx->libs); l++) {
-            printf("#use <%s>\n", * (string *) libs[l]);
+            printf("#use <%s>\n", * (string *) v_get(libs, l));
         }
         if (!om_empty(gctx->libs)) println("");
 
